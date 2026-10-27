@@ -98,16 +98,16 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
 <div class="wrap">
   <header>
     <h1>재고조사 차이 추적기</h1>
-    <p>ERP 엑셀 3개(+선택 1개)를 올리면 차이내역을 원인별로 나누고, 결재용 「인수인계 재고조사 확인서」를 만들어 줍니다. 파일은 내 PC 안에서만 처리되고 어디에도 전송되지 않습니다.</p>
+    <p>ARS 엑셀 3개(+선택 1개)를 올리면 차이내역을 원인별로 나누고, 결재용 「인수인계 재고조사 확인서」를 만들어 줍니다. 파일은 내 PC 안에서만 처리되고 어디에도 전송되지 않습니다.</p>
   </header>
 
   <section class="card" aria-labelledby="s1">
-    <div class="step"><b>1</b><h2 id="s1">ERP 파일 올리기</h2></div>
+    <div class="step"><b>1</b><h2 id="s1">ARS 파일 올리기</h2></div>
     <details>
       <summary>어떤 파일을, 어떤 조건으로 받나요?</summary>
       <div class="guide">
         <div class="scroll"><table>
-          <tr><th>ERP 메뉴</th><th>조회 조건</th><th>용도</th></tr>
+          <tr><th>ARS 메뉴</th><th>조회 조건</th><th>용도</th></tr>
           <tr><td><b>재고실사 본사전송</b></td><td>재고조사일자 = <b>이번 조사일</b>, 상태 전표생성</td><td>실사재고(스캔 수량)</td></tr>
           <tr><td><b>스타일별 입출고실적조회</b></td><td>점 구분 / 조회기간 = <b>조사 다음날(오늘)</b> / <b>사이즈별</b></td><td>장부재고(전산 수량)</td></tr>
           <tr><td><b>거래내역 상세조회</b></td><td>조회기간 = <b>직전 조사일 ~ 이번 조사 전날</b>, 출고형태·입출고유형 전체</td><td>차이 원인 추적</td></tr>
@@ -198,7 +198,7 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
     return m ? m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) : '';
   }
 
-  /* 이 회사 ERP xlsx는 선언 범위(!ref)가 실제보다 작음 → 셀 키를 직접 스캔해 범위 보정 */
+  /* 이 회사 ARS xlsx는 선언 범위(!ref)가 실제보다 작음 → 셀 키를 직접 스캔해 범위 보정 */
   function fixTruncatedRange(XLSX, ws) {
     var maxR = 0, maxC = 0;
     Object.keys(ws).forEach(function (k) {
@@ -338,13 +338,16 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
       Object.keys(G).forEach(function (g) {
         var P_ = G[g].filter(function (L) { return L.diff > 0; }).sort(function (a, b) { return rem(b) - rem(a); });
         var N_ = G[g].filter(function (L) { return L.diff < 0; }).sort(function (a, b) { return rem(b) - rem(a); });
-        P_.forEach(function (p) {
-          N_.forEach(function (q) {
-            var m = Math.min(rem(p), rem(q)); if (m <= 0) return;
-            if (label === 'cross' && p.style === q.style) return;
-            if (p.color !== q.color && p.size !== q.size) return; // 컬러·사이즈 둘 다 다르면 돌아감으로 보지 않음
-            p.swap += m; q.swap += m;
-            p.partners.push({ L: q, q: m, cross: label === 'cross' }); q.partners.push({ L: p, q: m, cross: label === 'cross' });
+        // 1순위: 컬러 또는 사이즈가 같은 짝 → 2순위: 컬러·사이즈 모두 달라도 같은 상품이면 상쇄
+        [true, false].forEach(function (strict) {
+          P_.forEach(function (p) {
+            N_.forEach(function (q) {
+              var m = Math.min(rem(p), rem(q)); if (m <= 0) return;
+              if (label === 'cross' && p.style === q.style) return;
+              if (strict && p.color !== q.color && p.size !== q.size) return;
+              p.swap += m; q.swap += m;
+              p.partners.push({ L: q, q: m, cross: label === 'cross' }); q.partners.push({ L: p, q: m, cross: label === 'cross' });
+            });
           });
         });
       });
