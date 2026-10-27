@@ -80,7 +80,7 @@ summary{cursor:pointer;font-weight:600}
 .p-rescan{background:var(--red-soft);color:var(--red)} .p-slip{background:var(--orange-soft);color:var(--orange)}
 .p-swapgap{background:var(--blue-soft);color:var(--blue)}
 .p-prev,.p-prevhint{background:var(--violet-soft);color:var(--violet)} .p-normal{background:var(--grey-soft);color:var(--muted)}
-.p-adjdone{background:var(--grey-soft);color:var(--green)} .p-adjnew{background:var(--yellow-soft);color:var(--yellow)} .p-txhint{background:var(--accent-soft);color:var(--accent)} .p-swap{background:var(--green-soft);color:var(--green)}
+.p-adjdone{background:var(--grey-soft);color:var(--green)} .p-adjreg{background:var(--grey-soft);color:var(--muted)} .p-txhint{background:var(--accent-soft);color:var(--accent)} .p-swap{background:var(--green-soft);color:var(--green)}
 table.res{border-collapse:collapse;width:100%;min-width:960px;font-size:.86rem}
 table.res th{position:sticky;top:0;background:var(--panel);text-align:left;font-size:.76rem;color:var(--muted);letter-spacing:.03em;border-bottom:2px solid var(--line);padding:7px 8px;white-space:nowrap}
 table.res td{border-bottom:1px solid var(--line);padding:7px 8px;vertical-align:top}
@@ -133,8 +133,8 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
     <details>
       <summary>상태 표시 읽는 법</summary>
       <div class="legend" style="margin-top:8px">
-        <div><span class="pill p-rescan">재스캔 필요</span>실사 0 또는 3족 이상 차이. 스캔 누락 가능성이 커서 다시 스캔하면 로스가 줄어듭니다</div>
-        <div><span class="pill p-adjnew">보정 확인</span>스캔·장부가 같았는데 차이분등록 때문에 새로 차이가 생김. 등록한 옵션·수량·부호(+/−) 확인</div>
+        <div><span class="pill p-rescan">재스캔 필요</span>같은 스타일의 여러 옵션(사이즈·컬러)이 통째로 안 찍힘. 해당 스타일 위치를 다시 스캔</div>
+        <div><span class="pill p-adjreg">수기 등록</span>차이분등록으로 생긴 차이. 등록 내용이 사유로 들어감, 할 일 없음</div>
         <div><span class="pill p-slip">전표 확인</span>점간이동·반품·입고 전표와 실물이 다를 가능성. 상대 매장/물류에 확인</div>
         <div><span class="pill p-swapgap">돌아감 잔여</span>같은 스타일끼리 상쇄되고 남은 수량이 있음</div>
         <div><span class="pill p-prev">이전조사 반영</span>직전 조사 로스/과다 처리분과 연결됨. 확인서에 시트 자동 첨부</div>
@@ -352,11 +352,26 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
                    rawScan: rawScan[k] || 0, adj: adj[k] || 0, adjNote: (adjNote[k] || []).join(', ') });
     });
 
+    // ①-2 재스캔 필요: 같은 스타일에서 2개 이상 옵션이 통째로 안 찍힘(실사 0, 장부 있음)
+    var missBy = {};
+    lines.forEach(function (L) { if (L.diff < 0 && L.scan === 0 && L.book > 0) (missBy[L.style] = missBy[L.style] || []).push(L); });
+    //  (a) 스타일 전체 실사 0 & 장부 2개 이상  (b) 2개 이상 옵션이 실사 0
+    var stScan = {}, stBook = {};
+    Object.keys(scan).forEach(function (k) { var st = k.split('|')[0]; stScan[st] = (stScan[st] || 0) + scan[k]; });
+    Object.keys(book).forEach(function (k) { var st = k.split('|')[0]; stBook[st] = (stBook[st] || 0) + book[k]; });
+    Object.keys(missBy).forEach(function (st) {
+      var arr = missBy[st];
+      var whole = !(stScan[st] > 0) && stBook[st] >= 2;
+      if (!whole && arr.length < 2) return;
+      var tot = arr.reduce(function (a, L) { return a + L.diff; }, 0);
+      arr.forEach(function (L) { L.miss = { whole: whole, n: arr.length, tot: tot, opts: arr.map(function (x) { return (x.color + ' ' + x.size).trim(); }) }; });
+    });
+
     // ② 사이즈/컬러 돌아감 매칭 (1차: 동일 스타일, 2차: 동일 브랜드+상품명 타 스타일코드)
     function rem(L) { return Math.abs(L.diff) - L.timing - L.swap; }
     function match(groupKeyFn, label) {
       var G = {};
-      lines.forEach(function (L) { if (rem(L) > 0) (G[groupKeyFn(L)] = G[groupKeyFn(L)] || []).push(L); });
+      lines.forEach(function (L) { if (rem(L) > 0 && !L.miss) (G[groupKeyFn(L)] = G[groupKeyFn(L)] || []).push(L); });
       Object.keys(G).forEach(function (g) {
         var P_ = G[g].filter(function (L) { return L.diff > 0; }).sort(function (a, b) { return rem(b) - rem(a); });
         var N_ = G[g].filter(function (L) { return L.diff < 0; }).sort(function (a, b) { return rem(b) - rem(a); });
@@ -401,8 +416,13 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
 
     lines.forEach(function (L) {
       var a = Math.abs(L.diff), residual = rem(L), plus = L.diff > 0, why = [], reason, flag;
-      if (L.swap > 0) {
-        reason = R_SWAP; flag = residual > 0 ? (residual >= 3 ? 'rescan' : 'swapgap') : 'swap';
+      if (L.miss) {
+        reason = R_LOST; flag = 'rescan';
+        why.push(L.miss.whole
+          ? '스타일 전체 실사 0 (장부 ' + stBook[L.style] + (L.miss.n > 1 ? ', ' + L.miss.n + '개 옵션' : '') + ') — 스타일 통째 스캔 누락 의심'
+          : '동일 스타일 ' + L.miss.n + '개 옵션(' + L.miss.opts.join(', ') + ') 실사 0, 합계 ' + L.miss.tot + ' — 여러 사이즈 스캔 누락 의심');
+      } else if (L.swap > 0) {
+        reason = R_SWAP; flag = residual > 0 ? 'swapgap' : 'swap';
         why.push((L.partners.some(function (p) { return p.cross; }) ? '동일상품 타코드 ' : '동일스타일 ') + partnerText(L) + '와 상쇄');
         if (residual > 0) why.push('잔여 ' + signed(plus ? residual : -residual) + ' 미확인');
       } else {
@@ -443,13 +463,11 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
           }
         } else {
           reason = R_LOST;
-          if (L.scan === 0 && L.book >= 3) { flag = 'rescan'; why.push('실사 0 (장부 ' + L.book + ') — 진열/창고 위치 스캔 누락 의심'); }
-          else if (trIn) { flag = 'slip'; why.push(md(trIn.date) + ' 점간이동입고 ' + trIn.inQ + '족 등록 — 실물 미입고 추정'); }
+          if (trIn) { flag = 'slip'; why.push(md(trIn.date) + ' 점간이동입고 ' + trIn.inQ + '족 등록 — 실물 미입고 추정'); }
           else if (logi && logi.date >= addDays(S, -14)) { flag = 'slip'; why.push(md(logi.date) + ' 물류입고(' + logi.why + ') ' + logi.inQ + '족 — 입고 검수 누락/미도착 추정'); }
           else if (cancel) { flag = 'slip'; why.push(md(cancel.date) + ' 판매취소 등록 — 반품 실물 미회수 추정'); }
           else if (trOut) { flag = 'slip'; why.push(md(trOut.date) + ' 점간이동출고 — 등록보다 많이 발송 추정'); }
           else if (last && last.inQ > 0) { flag = 'txhint'; why.push(md(last.date) + ' 입고(' + last.why + ') ' + last.inQ + '족 후 거래 없음 — 입고 미도착/검수 누락 추정'); }
-          if (flag === 'normal' && a >= 3) flag = 'rescan';
         }
         if (reason !== R_PREV_LOSS && reason !== R_PREV_OVER) {
           var ps = (prevStyle[L.style] || []).filter(function (r) { return key(r.style, r.color, r.size) !== L.k; });
@@ -464,10 +482,9 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
       if (L.adj) {
         var at = '차이분등록 ' + signed(L.adj) + (L.adjNote ? '(' + L.adjNote + ')' : '');
         if (L.rawScan === L.book) {
-          // 원인은 차이분등록 자체 → 다른 추정은 빼고, 상쇄 짝만 남김(옵션 오등록 단서)
-          if (L.swap > 0) why.unshift(at + '로 발생 — 스캔·장부는 일치했음, 옵션 오등록 의심');
-          else why = [at + '로 발생 — 스캔·장부는 일치했음'];
-          flag = 'adjnew'; tip = '차이분등록 옵션·수량 확인';
+          // 매장이 사유를 갖고 수기 등록한 건 → 등록 내용을 사유로 사용, 별도 확인 불필요
+          if (L.swap > 0) why.unshift(at);
+          else { why = [at]; flag = 'adjreg'; tip = '할 일 없음 (등록 사유 기재)'; }
         }
         else why.unshift(at + ' 반영 후 잔여 ' + signed(L.diff));
       }
@@ -477,7 +494,7 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
     // 차이분등록으로 차이가 0이 된 품목도 확인서에 남김 (J열 추가등록수량 기입, K=0)
     //  비고/사유는 보정 전 차이 기준 판정을 그대로 사용
     var resolved = 0;
-    if (F.adj && !opts.noAdj) {
+    if (false && F.adj && !opts.noAdj) { // 차이 0이 된 품목은 확인서에서 제외 (사용자 요청)
       var raw = analyze(files.filter(function (f) { return !(f && f.type === 'adj'); }), { noAdj: true });
       var rawBy = {}; (raw.lines || []).forEach(function (R) { rawBy[R.k] = R; });
       Object.keys(adj).forEach(function (k) {
@@ -622,8 +639,8 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
 (function(){
   var L = window.InvLogic, files = {}, res = null, filter = 'all';
   var FLAGS = [
-    ['rescan','재스캔 필요'],['adjnew','보정 확인'],['slip','전표 확인'],
-    ['swapgap','돌아감 잔여'],['prev','이전조사 반영'],['txhint','거래내역 추정'],['prevhint','이전조사 연관'],['normal','사유 미확정'],['swap','돌아감 상쇄'],['adjdone','추가등록 반영']];
+    ['rescan','재스캔 필요'],['slip','전표 확인'],
+    ['swapgap','돌아감 잔여'],['prev','이전조사 반영'],['txhint','거래내역 추정'],['prevhint','이전조사 연관'],['normal','사유 미확정'],['swap','돌아감 상쇄'],['adjreg','수기 등록'],['adjdone','추가등록 반영']];
   var FL = {}; FLAGS.forEach(function(f){ FL[f[0]] = f[1]; });
   var $ = function(id){ return document.getElementById(id); };
   function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
