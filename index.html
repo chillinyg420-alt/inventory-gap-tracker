@@ -80,7 +80,7 @@ summary{cursor:pointer;font-weight:600}
 .p-rescan{background:var(--red-soft);color:var(--red)} .p-slip{background:var(--orange-soft);color:var(--orange)}
 .p-swapgap{background:var(--blue-soft);color:var(--blue)}
 .p-prev,.p-prevhint{background:var(--violet-soft);color:var(--violet)} .p-normal{background:var(--grey-soft);color:var(--muted)}
-.p-txhint{background:var(--accent-soft);color:var(--accent)} .p-swap{background:var(--green-soft);color:var(--green)}
+.p-adjnew{background:var(--yellow-soft);color:var(--yellow)} .p-txhint{background:var(--accent-soft);color:var(--accent)} .p-swap{background:var(--green-soft);color:var(--green)}
 table.res{border-collapse:collapse;width:100%;min-width:960px;font-size:.86rem}
 table.res th{position:sticky;top:0;background:var(--panel);text-align:left;font-size:.76rem;color:var(--muted);letter-spacing:.03em;border-bottom:2px solid var(--line);padding:7px 8px;white-space:nowrap}
 table.res td{border-bottom:1px solid var(--line);padding:7px 8px;vertical-align:top}
@@ -112,6 +112,7 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
           <tr><td><b>스타일별 입출고실적조회</b></td><td>점 구분 / 조회기간 = <b>조사 다음날(오늘)</b> / <b>사이즈별</b></td><td>장부재고(전산 수량)</td></tr>
           <tr><td><b>거래내역 상세조회</b></td><td>조회기간 = <b>직전 조사일 ~ 이번 조사 전날</b>, 출고형태·입출고유형 전체</td><td>차이 원인 추적</td></tr>
           <tr><td>재고실사 내역조회 <span class="muted">(선택)</span></td><td>재고조사일 = <b>직전 조사일</b>, 조회구분 정상</td><td>직전 조사 로스/과다 대조. 없으면 이 판정만 생략</td></tr>
+          <tr><td>재고실사 차이분등록 <span class="muted">(선택)</span></td><td>재고조사일자 = <b>이번 조사일</b></td><td>본사전송 전 수기로 찾은 차이(스캔누락·과스캔 등)를 실사에 더해 차이를 줄임</td></tr>
         </table></div>
         <p class="muted small">조사 당일 스캔 후 판매분은 매장에서 수기로 조정하므로, 거래내역은 <b>조사 전날까지만</b> 받습니다.</p>
       </div>
@@ -133,6 +134,7 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
       <summary>상태 표시 읽는 법</summary>
       <div class="legend" style="margin-top:8px">
         <div><span class="pill p-rescan">재스캔 필요</span>실사 0 또는 3족 이상 차이. 스캔 누락 가능성이 커서 다시 스캔하면 로스가 줄어듭니다</div>
+        <div><span class="pill p-adjnew">보정 확인</span>스캔·장부가 같았는데 차이분등록 때문에 새로 차이가 생김. 등록한 옵션·수량·부호(+/−) 확인</div>
         <div><span class="pill p-slip">전표 확인</span>점간이동·반품·입고 전표와 실물이 다를 가능성. 상대 매장/물류에 확인</div>
         <div><span class="pill p-swapgap">돌아감 잔여</span>같은 스타일끼리 상쇄되고 남은 수량이 있음</div>
         <div><span class="pill p-prev">이전조사 반영</span>직전 조사 로스/과다 처리분과 연결됨. 확인서에 시트 자동 첨부</div>
@@ -181,7 +183,8 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
     scan: { title: '재고실사 본사전송', label: '재고실사 본사전송', need: true },
     book: { title: '스타일별 입출고실적조회', label: '스타일별 입출고 실적조회', need: true },
     tx:   { title: '거래내역 상세조회', label: '거래내역 상세조회', need: true },
-    prev: { title: '재고실사 내역조회', label: '재고실사 내역조회 (선택)', need: false }
+    prev: { title: '재고실사 내역조회', label: '재고실사 내역조회 (선택)', need: false },
+    adj:  { title: '재고실사 차이분등록', label: '재고실사 차이분등록 (선택)', need: false }
   };
 
   /* ---------- 공통 유틸 ---------- */
@@ -269,6 +272,10 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
         var b = base(r); b.date = toISO(g(r, '일자')); b.inQ = n(g(r, '입고수량')); b.outQ = n(g(r, '출고수량'));
         b.kind = s(g(r, '수불유형')); b.why = s(g(r, '사유')); return b;
       });
+    } else if (type === 'adj') {
+      var m5 = meta.match(/재고조사일자\s*:\s*([\d\-.]+)/); out.date = m5 ? toISO(m5[1]) : '';
+      out.recs = recs.map(function (r) { var b = base(r); b.qty = n(g(r, '수량')); b.note = s(g(r, '비고')); return b; })
+                     .filter(function (x) { return x.qty !== 0; });
     } else if (type === 'prev') {
       var m4 = meta.match(/재고조사일\s*:\s*([\d\-.]+)/); out.date = m4 ? toISO(m4[1]) : '';
       out.recs = recs.map(function (r) {
@@ -311,6 +318,18 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
     var scan = {}, book = {}, info = {};
     F.scan.recs.forEach(function (r) { var k = key(r.style, r.color, r.size); scan[k] = (scan[k] || 0) + r.qty; if (!info[k]) info[k] = r; });
     F.book.recs.forEach(function (r) { var k = key(r.style, r.color, r.size); book[k] = (book[k] || 0) + r.qty; info[k] = r; });
+    // 차이분등록(본사전송 전 수기 보정): 실사 = 스캔 + 보정수량
+    var rawScan = {}, adj = {}, adjNote = {}, adjSum = 0, adjCnt = 0;
+    Object.keys(scan).forEach(function (k) { rawScan[k] = scan[k]; });
+    if (F.adj) {
+      if (S && F.adj.date && F.adj.date !== S) warnings.push({ lv: 'err', msg: '차이분등록 조사일자(' + md(F.adj.date) + ')가 본사전송 조사일(' + md(S) + ')과 다릅니다.' });
+      F.adj.recs.forEach(function (r) {
+        var k = key(r.style, r.color, r.size);
+        adj[k] = (adj[k] || 0) + r.qty; scan[k] = (scan[k] || 0) + r.qty; if (!info[k]) info[k] = r;
+        if (r.note) (adjNote[k] = adjNote[k] || []).push(r.note);
+        adjSum += r.qty; adjCnt++;
+      });
+    }
     var txBy = {}, txStyle = {};
     tx.forEach(function (r) { var k = key(r.style, r.color, r.size); (txBy[k] = txBy[k] || []).push(r); (txStyle[r.style] = txStyle[r.style] || []).push(r); });
 
@@ -321,13 +340,15 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
 
     // 차이 라인
     var lines = [];
+    var adjResolved = Object.keys(adj).filter(function (k) { return (scan[k] || 0) === (book[k] || 0); }).length;
     var all = {}; Object.keys(scan).forEach(function (k) { all[k] = 1; }); Object.keys(book).forEach(function (k) { all[k] = 1; });
     Object.keys(all).forEach(function (k) {
       var b = book[k] || 0, sc = scan[k] || 0, d = sc - b;
       if (d === 0) return;
       var i = info[k];
       lines.push({ k: k, brand: i.brand, product: i.product, style: i.style, own: i.own || i.style, color: i.color, size: i.size,
-                   book: b, scan: sc, diff: d, price: i.price || 0, timing: 0, swap: 0, partners: [], tags: [] });
+                   book: b, scan: sc, diff: d, price: i.price || 0, timing: 0, swap: 0, partners: [], tags: [],
+                   rawScan: rawScan[k] || 0, adj: adj[k] || 0, adjNote: (adjNote[k] || []).join(', ') });
     });
 
     // ② 사이즈/컬러 돌아감 매칭 (1차: 동일 스타일, 2차: 동일 브랜드+상품명 타 스타일코드)
@@ -439,6 +460,16 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
       }
       // 화면 전용 행동 안내 (확인서에는 들어가지 않음)
       var tip = { rescan: '재스캔 후 재업로드', slip: '전표와 실물 대조', swapgap: '잔여 수량 확인', prev: '확인서에 이전조사 시트 자동 첨부', txhint: '해당 일자 영수증·교환 내역 확인', normal: '근거 없음 — 사유 공란, 점장 확인' }[flag] || '';
+      if (L.adj) {
+        var at = '차이분등록 ' + signed(L.adj) + (L.adjNote ? '(' + L.adjNote + ')' : '');
+        if (L.rawScan === L.book) {
+          // 원인은 차이분등록 자체 → 다른 추정은 빼고, 상쇄 짝만 남김(옵션 오등록 단서)
+          if (L.swap > 0) why.unshift(at + '로 발생 — 스캔·장부는 일치했음, 옵션 오등록 의심');
+          else why = [at + '로 발생 — 스캔·장부는 일치했음'];
+          flag = 'adjnew'; tip = '차이분등록 옵션·수량 확인';
+        }
+        else why.unshift(at + ' 반영 후 잔여 ' + signed(L.diff));
+      }
       L.reason = reason; L.why = why.join(' / '); L.flag = flag; L.residual = residual; L.tip = tip;
     });
 
@@ -448,7 +479,8 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
     var sum = function (arr, f) { return arr.reduce(function (a, x) { return a + f(x); }, 0); };
     var stats = {
       store: (F.scan.store || F.book.store), surveyDate: S, prevDate: P,
-      bookTotal: sum(F.book.recs, function (r) { return r.qty; }), scanTotal: sum(F.scan.recs, function (r) { return r.qty; }),
+      bookTotal: sum(F.book.recs, function (r) { return r.qty; }), scanTotal: sum(F.scan.recs, function (r) { return r.qty; }) + adjSum,
+      rawScanTotal: sum(F.scan.recs, function (r) { return r.qty; }), adjSum: adjSum, adjCnt: adjCnt, hasAdj: !!F.adj, adjResolved: adjResolved,
       lines: lines.length,
       plusLines: lines.filter(function (L) { return L.diff > 0; }).length, plusQty: sum(lines.filter(function (L) { return L.diff > 0; }), function (L) { return L.diff; }),
       minusLines: lines.filter(function (L) { return L.diff < 0; }).length, minusQty: sum(lines.filter(function (L) { return L.diff < 0; }), function (L) { return L.diff; }),
@@ -572,7 +604,7 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
 (function(){
   var L = window.InvLogic, files = {}, res = null, filter = 'all';
   var FLAGS = [
-    ['rescan','재스캔 필요'],['slip','전표 확인'],
+    ['rescan','재스캔 필요'],['adjnew','보정 확인'],['slip','전표 확인'],
     ['swapgap','돌아감 잔여'],['prev','이전조사 반영'],['txhint','거래내역 추정'],['prevhint','이전조사 연관'],['normal','사유 미확정'],['swap','돌아감 상쇄']];
   var FL = {}; FLAGS.forEach(function(f){ FL[f[0]] = f[1]; });
   var $ = function(id){ return document.getElementById(id); };
@@ -615,16 +647,16 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
 
   function run(){
     chips();
-    var list = ['scan','book','tx','prev'].map(function(t){ return files[t]; }).filter(Boolean);
+    var list = ['scan','book','tx','prev','adj'].map(function(t){ return files[t]; }).filter(Boolean);
     if(!files.scan || !files.book || !files.tx){ $('sum').hidden = true; $('out').hidden = true; return; }
     res = L.analyze(list);
     if(!res.ok){ return; }
     var s = res.stats;
     $('meta').textContent = (s.store||'')+' · 이번 조사일 '+s.surveyDate+' · 직전 조사일 '+(s.prevDate||'-')+' · 거래내역 '+(s.txFrom||'')+' ~ '+(s.txTo||'');
     $('kpis').innerHTML = [
-      ['장부(전산)',fmt(s.bookTotal)],['실사(스캔)',fmt(s.scanTotal)],['차이 품목',fmt(s.lines)+'줄'],
+      ['장부(전산)',fmt(s.bookTotal)],[s.hasAdj?'실사(스캔+차이분등록)':'실사(스캔)',fmt(s.scanTotal)]].concat(s.hasAdj?[['차이분등록 반영',sg(s.adjSum)+' ('+s.adjCnt+'건 · '+s.adjResolved+'건 해소)']]:[]).concat([['차이 품목',fmt(s.lines)+'줄'],
       ['과다',sg(s.plusQty)+' ('+s.plusLines+'줄)','plus'],['부족',sg(s.minusQty)+' ('+s.minusLines+'줄)','minus'],['부족 금액(정상가)',(s.lossAmt/10000).toLocaleString('ko-KR',{maximumFractionDigits:1})+'만원','minus']
-    ].map(function(k){ return '<div class="kpi '+(k[2]||'')+'"><small>'+k[0]+'</small><div>'+k[1]+'</div></div>'; }).join('');
+    ]).map(function(k){ return '<div class="kpi '+(k[2]||'')+'"><small>'+k[0]+'</small><div>'+k[1]+'</div></div>'; }).join('');
     $('warns').innerHTML = res.warnings.map(function(w){ return '<div class="warn '+(w.lv==='warn'?'':w.lv)+'">'+esc(w.msg)+'</div>'; }).join('');
     var cnt = {}; res.lines.forEach(function(x){ cnt[x.flag]=(cnt[x.flag]||0)+1; });
     $('filters').innerHTML = '<button class="f" data-f="all" aria-pressed="'+(filter==='all')+'">전체 <em>'+res.lines.length+'</em></button>' +
@@ -641,7 +673,7 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
       return '<tr><td><span class="pill p-'+x.flag+'">'+FL[x.flag]+'</span></td>'+
         '<td><div class="prod">'+esc(x.brand)+' '+esc(x.product)+'</div><div class="sub">'+esc(x.style)+'</div></td>'+
         '<td>'+esc(x.color)+' / <b>'+esc(x.size)+'</b></td>'+
-        '<td class="n">'+fmt(x.book)+'</td><td class="n">'+fmt(x.scan)+'</td>'+
+        '<td class="n">'+fmt(x.book)+'</td><td class="n">'+fmt(x.scan)+(x.adj?'<div class="sub">스캔 '+fmt(x.rawScan)+' '+sg(x.adj)+'</div>':'')+'</td>'+
         '<td class="n d '+(x.diff>0?'plus':'minus')+'">'+sg(x.diff)+'</td>'+
         '<td>'+esc(x.reason)+'</td><td class="small">'+(x.why?esc(x.why):'<span class="muted">공란</span>')+'</td><td class="small muted">'+esc(x.tip)+'</td></tr>';
     }).join('') || '<tr><td colspan="9" class="muted">해당 상태의 품목이 없습니다.</td></tr>';
