@@ -125,11 +125,12 @@ td.loc{color:var(--muted);font-size:.8rem;white-space:nowrap}
       <div class="scroll"><table class="guide" style="min-width:520px;border-collapse:collapse;width:100%">
         <tr><th style="text-align:left">ARS 메뉴</th><th style="text-align:left">조회 조건</th><th style="text-align:left">쓰임</th></tr>
         <tr><td><b>재고실사 본사전송</b></td><td>재고조사일자 = 이번 조사일</td><td>실사(스캔) 수량 · 등록일자 · 상품위치</td></tr>
-        <tr><td><b>스타일별 입출고실적조회</b></td><td>점 구분 · 조회기간 = 조사일 이후 · <b>사이즈별</b></td><td>장부(전산) 수량</td></tr>
+        <tr><td><b>스타일별 입출고실적조회</b></td><td>점 구분 · 조회기간 = 조사일 이후 · <b>사이즈별</b></td><td rowspan="2">장부(전산) 수량<br><span class="muted">둘 중 하나만</span></td></tr>
+        <tr><td><b>또는 바코드 출력</b></td><td>바코드구분 자사 · 발행구분 <b>현재고기준</b> · 브랜드 전체</td></tr>
       </table></div>
       <label class="drop" id="drop1" tabindex="0">
         <input type="file" id="file1" multiple accept=".xlsx,.xls">
-        <strong>파일 2개를 끌어오거나 눌러서 선택</strong>
+        <strong>본사전송 + 전산재고 파일(입출고실적 또는 바코드 출력)을 끌어오거나 눌러서 선택</strong>
         <span class="muted small">순서 상관없음 · 파일 종류 자동 인식</span>
       </label>
       <div class="chips" id="chips1"></div>
@@ -189,7 +190,8 @@ td.loc{color:var(--muted);font-size:.8rem;white-space:nowrap}
 
   var TYPES = {
     scan:  { title: '재고실사 본사전송', label: '재고실사 본사전송', mode: 1 },
-    book:  { title: '스타일별 입출고실적조회', label: '스타일별 입출고 실적조회', mode: 1 },
+    book:  { title: '스타일별 입출고실적조회', label: '스타일별 입출고 실적조회', mode: 1, alt: 'barcode' },
+    barcode: { title: '바코드 출력', label: '바코드 출력 (현재고기준)', mode: 1, alt: 'book' },
     final: { title: '재고실사 내역조회', label: '재고실사 내역조회 (이번 조사일)', mode: 2 }
   };
 
@@ -286,6 +288,11 @@ td.loc{color:var(--muted);font-size:.8rem;white-space:nowrap}
       var m5 = meta.match(/재고조사일자\s*:\s*([\d\-.]+)/); out.date = m5 ? toISO(m5[1]) : '';
       out.recs = recs.map(function (r) { var b = base(r); b.qty = n(g(r, '수량')); b.note = s(g(r, '비고')); return b; })
                      .filter(function (x) { return x.qty !== 0; });
+    } else if (type === 'barcode') {
+      var m6 = meta.match(/기준일자\s*:\s*([\d\-.]+)/); out.date = m6 ? toISO(m6[1]) : '';
+      var m7 = meta.match(/발행구분\s*:\s*([^\n]+)/); out.issue = m7 ? s(m7[1]) : '';
+      var m8 = meta.match(/바코드구분\s*:\s*([^\n]*)/); out.bcKind = m8 ? s(m8[1]) : '';
+      out.recs = recs.map(function (r) { var b = base(r); b.qty = n(g(r, '인쇄매수')); b.price = n(g(r, '판매가격')); return b; });
     } else if (type === 'final') {
       var m4 = meta.match(/재고조사일\s*:\s*([\d\-.]+)/); out.date = m4 ? toISO(m4[1]) : '';
       out.recs = recs.map(function (r) {
@@ -320,7 +327,14 @@ td.loc{color:var(--muted);font-size:.8rem;white-space:nowrap}
   function precheck(files) {
     var F = pick(files), warnings = [];
     if (!F.scan) warnings.push({ lv: 'err', msg: '재고실사 본사전송 파일이 없습니다.' });
-    if (!F.book) warnings.push({ lv: 'err', msg: '스타일별 입출고 실적조회 파일이 없습니다.' });
+    // 전산재고: 스타일별 입출고실적조회 또는 바코드 출력(현재고기준) 중 하나
+    if (F.book && F.barcode) warnings.push({ lv: 'info', msg: '입출고실적조회와 바코드 출력이 모두 올라와 입출고실적조회로 계산했습니다.' });
+    if (!F.book && F.barcode) {
+      F.book = F.barcode;
+      if (F.barcode.issue && F.barcode.issue.indexOf('현재고') < 0) warnings.push({ lv: 'warn', msg: '바코드 출력의 발행구분이 \'' + F.barcode.issue + '\'입니다. \'현재고기준\'으로 다시 받으세요.' });
+      warnings.push({ lv: 'info', msg: '전산재고는 바코드 출력(기준일자 ' + (F.barcode.date || '-') + ')의 인쇄매수로 계산했습니다. 바코드 출력에는 전산재고가 0 이하인 상품이 없어, 장부가 마이너스인 상품은 확인되지 않습니다.' });
+    }
+    if (!F.book) warnings.push({ lv: 'err', msg: '전산재고 파일이 없습니다 — 스타일별 입출고 실적조회 또는 바코드 출력 중 하나를 올리세요.' });
     if (!F.scan || !F.book) return { ok: false, warnings: warnings };
     storeCheck([F.scan, F.book], warnings);
     var S = F.scan.date;
@@ -351,8 +365,12 @@ td.loc{color:var(--muted);font-size:.8rem;white-space:nowrap}
     });
     lines.sort(sortLines); lines.forEach(function (L, i) { L.no = i + 1; });
     var minus = lines.filter(function (L) { return L.diff < 0; }), plus = lines.filter(function (L) { return L.diff > 0; });
+    // 매장/날짜가 다른 파일 의심 (바코드 출력은 매장명이 없어 수량으로 판단)
+    var bt = sum(F.book.recs, function (r) { return r.qty; }), stt = sum(F.scan.recs, function (r) { return r.qty; });
+    if (lines.length > Object.keys(all).length * 0.3 || Math.abs(bt - stt) > Math.max(bt, stt) * 0.1)
+      warnings.unshift({ lv: 'err', msg: '차이가 너무 많습니다(차이 ' + lines.length + '줄, 전산 ' + bt + ' / 스캔 ' + stt + '). 다른 매장이나 다른 날짜의 전산재고 파일인지 확인하세요.' });
     return { ok: true, mode: 1, warnings: warnings, lines: lines, stats: {
-      store: F.scan.store || F.book.store, surveyDate: S, bookDate: F.book.date,
+      store: F.scan.store || F.book.store, surveyDate: S, bookDate: F.book.date, bookSrc: F.book.type === 'barcode' ? '바코드 출력' : '입출고실적조회',
       bookTotal: sum(F.book.recs, function (r) { return r.qty; }), scanTotal: sum(F.scan.recs, function (r) { return r.qty; }),
       lines: lines.length, plusLines: plus.length, plusQty: sum(plus, function (L) { return L.diff; }),
       minusLines: minus.length, minusQty: sum(minus, function (L) { return L.diff; }),
@@ -518,8 +536,11 @@ td.loc{color:var(--muted);font-size:.8rem;white-space:nowrap}
     var S = store[m];
     var html = Object.keys(L.TYPES).filter(function(t){ return L.TYPES[t].mode===m; }).map(function(t){
       var f = S[t], T = L.TYPES[t];
-      var d = f ? esc(f.fileName)+' · '+fmt(f.rows)+'행'+(f.date?' · '+f.date:'') : '필수 — 아직 없음';
-      return '<div class="chip '+(f?'ok':'')+'"><i class="dot"></i><span><b>'+esc(T.label)+'</b><br><span class="muted">'+d+'</span></span></div>';
+      var other = T.alt && S[T.alt];
+      var d = f ? esc(f.fileName)+' · '+fmt(f.rows)+'행'+(f.date?' · '+f.date:'')
+        : other ? (T.alt==='barcode'?'바코드 출력으로':'입출고실적조회로')+' 대체 — 필요 없음'
+        : T.alt ? '이 파일 또는 '+(T.alt==='barcode'?'바코드 출력':'입출고실적조회')+' 중 하나 필요' : '필수 — 아직 없음';
+      return '<div class="chip '+(f?'ok':other?'opt':'')+'"><i class="dot"></i><span><b>'+esc(T.label)+'</b><br><span class="muted">'+d+'</span></span></div>';
     });
     Object.keys(S).filter(function(k){return k.indexOf('bad_')===0;}).forEach(function(k){
       html.push('<div class="chip"><i class="dot" style="background:var(--red)"></i><span><b>'+esc(S[k].fileName)+'</b><br><span class="muted">'+esc(S[k].error)+'</span></span></div>');
@@ -540,7 +561,7 @@ td.loc{color:var(--muted);font-size:.8rem;white-space:nowrap}
   var FL1 = [['rescan','재스캔 필요'],['minus','부족 (−)'],['plus','과다 (+)']];
   function render1(){
     var r = res[1], s = r.stats;
-    $('meta1').textContent = (s.store||'')+' · 조사일 '+s.surveyDate+' · 전산재고 조회일 '+(s.bookDate||'-');
+    $('meta1').textContent = (s.store||'')+' · 조사일 '+s.surveyDate+' · 전산재고 '+s.bookSrc+' ('+(s.bookDate||'-')+')';
     kpis('kpis1', [['장부(전산)',fmt(s.bookTotal)],['실사(스캔)',fmt(s.scanTotal)],['차이 품목',fmt(s.lines)+'줄'],
       ['부족',sg(s.minusQty)+' ('+s.minusLines+'줄)','minus'],['과다',sg(s.plusQty)+' ('+s.plusLines+'줄)','plus'],['재스캔 필요',s.rescan+'줄','minus']]);
     warns('warns1', r.warnings);
