@@ -92,72 +92,86 @@ td.d.plus{color:var(--blue);font-weight:700} td.d.minus{color:var(--red);font-we
 .legend div{display:flex;gap:8px;align-items:baseline}
 footer{color:var(--muted);font-size:.82rem;text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+[hidden]{display:none!important}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tab{appearance:none;text-align:left;border:2px solid var(--line);background:var(--panel);color:var(--fg);border-radius:12px;padding:14px 16px;cursor:pointer;display:grid;gap:4px;font:inherit;min-width:0}
+.tab b{font-size:1.02rem} .tab span{font-size:.84rem;color:var(--muted)}
+.tab[aria-selected="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.tab .no{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:.8rem;margin-right:6px}
+.tab:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.when{font-size:.88rem;padding:10px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--line)}
+.p-plus{background:var(--blue-soft);color:var(--blue)} .p-minus{background:var(--red-soft);color:var(--red)}
+td.loc{color:var(--muted);font-size:.8rem;white-space:nowrap}
+@media (max-width:560px){.tabs{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>재고조사 차이 추적기</h1>
-    <p>ARS 엑셀을 올리면 차이내역을 원인별로 나누고, 결재용 「인수인계 재고조사 확인서」를 만들어 줍니다. 파일은 내 PC 안에서만 처리되고 어디에도 전송되지 않습니다.</p>
+    <p>ARS 엑셀을 올리면 차이 목록을 정리해 양식 그대로 내려받을 수 있습니다. 파일은 내 PC 안에서만 처리되고 어디에도 전송되지 않습니다.</p>
   </header>
 
-  <section class="card" aria-labelledby="s1">
-    <div class="step"><b>1</b><h2 id="s1">ARS 파일 올리기</h2></div>
-    <details>
-      <summary>어떤 파일을, 어떤 조건으로 받나요?</summary>
-      <div class="guide">
-        <div class="scroll"><table>
-          <tr><th>ARS 메뉴</th><th>조회 조건</th><th>용도</th></tr>
-          <tr><td><b>재고실사 본사전송</b></td><td>재고조사일자 = <b>이번 조사일</b>, 상태 전표생성</td><td>실사재고(스캔 수량)</td></tr>
-          <tr><td><b>스타일별 입출고실적조회</b></td><td>점 구분 / 조회기간 = <b>조사 다음날(오늘)</b> / <b>사이즈별</b></td><td>장부재고(전산 수량)</td></tr>
-          <tr><td><b>거래내역 상세조회</b></td><td>조회기간 = <b>직전 조사일 ~ 이번 조사 전날</b>, 출고형태·입출고유형 전체</td><td>차이 원인 추적</td></tr>
-          <tr><td>재고실사 내역조회 <span class="muted">(선택)</span></td><td>재고조사일 = <b>직전 조사일</b>, 조회구분 정상</td><td>직전 조사 로스/과다 대조. 없으면 이 판정만 생략</td></tr>
-          <tr><td><b>재고실사 내역조회 — 최종</b></td><td>재고조사일 = <b>이번 조사일</b>, 조회구분 정상<br><span class="muted">재고조사 완료(본사전송·차이분등록 끝) 후</span></td><td>최종 확인서. 장부·실사·추가등록을 ARS 확정 수량 그대로 기입</td></tr>
-          <tr><td>재고실사 차이분등록 <span class="muted">(선택)</span></td><td>재고조사일자 = <b>이번 조사일</b></td><td>본사전송 전 수기로 찾은 차이(스캔누락·과스캔 등)를 실사에 더해 차이를 줄임</td></tr>
-        </table></div>
-        <p class="muted small">조사 당일 스캔 후 판매분은 매장에서 수기로 조정하므로, 거래내역은 <b>조사 전날까지만</b> 받습니다. 재고실사 내역조회는 조사일로 직전/최종을 자동 구분합니다.</p>
-      </div>
-    </details>
-    <label class="drop" id="drop" tabindex="0">
-      <input type="file" id="file" multiple accept=".xlsx,.xls">
-      <strong>여기로 파일을 끌어오거나 눌러서 선택</strong>
-      <span class="muted small">여러 개를 한 번에 올려도 파일 종류를 자동으로 알아봅니다</span>
-    </label>
-    <div class="chips" id="chips"></div>
-    <p class="small" style="margin:0;padding:10px 12px;border-radius:8px;background:var(--accent-soft)"><b>최종 확인서</b>: 재고조사가 끝나면(본사전송·차이분등록 완료) ARS <b>재고실사 내역조회</b>(재고조사일 = 이번 조사일)를 올리세요. 이 파일 하나만 올려도 확인서가 완성되고, 거래내역·직전 내역조회를 같이 올리면 사유가 더 채워집니다.</p>
+  <div class="tabs" role="tablist" aria-label="작업 선택">
+    <button class="tab" role="tab" id="tab1" aria-selected="true" aria-controls="m1"><b><i class="no">1</i>본사전송 전 차이 추적</b><span>스캔 누락 찾기 · 본사전송 전</span></button>
+    <button class="tab" role="tab" id="tab2" aria-selected="false" aria-controls="m2"><b><i class="no">2</i>최종 확인서 출력</b><span>재고조사 완료 후 · 결재용</span></button>
+  </div>
+
+  <!-- ① 본사전송 전 -->
+  <section id="m1" role="tabpanel" aria-labelledby="tab1" style="display:grid;gap:18px">
+    <section class="card">
+      <div class="when"><b>언제?</b> 스캔을 마치고 <b>본사전송 전에</b> — 스캔 내역과 전산재고를 맞춰 보고 빠뜨린 상품을 찾습니다.</div>
+      <div class="scroll"><table class="guide" style="min-width:520px;border-collapse:collapse;width:100%">
+        <tr><th style="text-align:left">ARS 메뉴</th><th style="text-align:left">조회 조건</th><th style="text-align:left">쓰임</th></tr>
+        <tr><td><b>재고실사 본사전송</b></td><td>재고조사일자 = 이번 조사일</td><td>실사(스캔) 수량 · 등록일자 · 상품위치</td></tr>
+        <tr><td><b>스타일별 입출고실적조회</b></td><td>점 구분 · 조회기간 = 조사일 이후 · <b>사이즈별</b></td><td>장부(전산) 수량</td></tr>
+      </table></div>
+      <label class="drop" id="drop1" tabindex="0">
+        <input type="file" id="file1" multiple accept=".xlsx,.xls">
+        <strong>파일 2개를 끌어오거나 눌러서 선택</strong>
+        <span class="muted small">순서 상관없음 · 파일 종류 자동 인식</span>
+      </label>
+      <div class="chips" id="chips1"></div>
+    </section>
+    <section class="card" id="sum1" hidden>
+      <div id="meta1" class="muted small"></div>
+      <div class="kpis" id="kpis1"></div>
+      <div id="warns1" style="display:grid;gap:8px"></div>
+      <div class="filters" id="filters1" role="group" aria-label="보기"></div>
+      <div class="tbl"><table class="res"><thead><tr>
+        <th>상태</th><th>상품</th><th>컬러 / 사이즈</th><th>장부</th><th>실사</th><th>차이</th><th>등록일자</th><th>상품위치</th>
+      </tr></thead><tbody id="tb1"></tbody></table></div>
+      <div class="row"><button class="btn" id="dl1">본사전송 전 재고차이 추적 (.xlsx)</button><span id="dlmsg1" class="small muted"></span></div>
+      <p class="small muted" style="margin:0">찾은 상품을 다시 스캔한 뒤 새 본사전송 파일만 다시 올리면 목록이 바로 갱신됩니다.</p>
+    </section>
   </section>
 
-  <section class="card" id="sum" hidden aria-labelledby="s2">
-    <div class="step"><b>2</b><h2 id="s2">결재 전 재확인 리스트</h2></div>
-    <div id="meta" class="muted small"></div>
-    <div class="kpis" id="kpis"></div>
-    <div id="warns" class="row" style="display:grid;gap:8px"></div>
-    <details>
-      <summary>상태 표시 읽는 법</summary>
-      <div class="legend" style="margin-top:8px">
-        <div><span class="pill p-rescan">재스캔 필요</span>같은 스타일의 여러 옵션(사이즈·컬러)이 통째로 안 찍힘. 해당 스타일 위치를 다시 스캔</div>
-        <div><span class="pill p-adjreg">수기 등록</span>차이분등록으로 생긴 차이. 등록 내용이 사유로 들어감, 할 일 없음</div>
-        <div><span class="pill p-slip">전표 확인</span>점간이동·반품·입고 전표와 실물이 다를 가능성. 상대 매장/물류에 확인</div>
-        <div><span class="pill p-swapgap">돌아감 잔여</span>같은 스타일끼리 상쇄되고 남은 수량이 있음</div>
-        <div><span class="pill p-prev">이전조사 반영</span>직전 조사 로스/과다 처리분과 연결됨. 확인서에 시트 자동 첨부</div>
-        <div><span class="pill p-txhint">거래내역 추정</span>판매·판매취소·입고 기록으로 차이가 설명되는 건. 해당 일자 영수증·교환 내역 확인</div>
-        <div><span class="pill p-prevhint">이전조사 연관</span>직전 조사 때 같은 스타일 다른 옵션에서 차이 발생. 옵션 혼동 가능</div>
-        <div><span class="pill p-normal">사유 미확정</span>거래내역·전표로 설명되지 않아 사유를 비워 둠. 비고만 채워짐, 점장이 확인 후 작성</div>
-        <div><span class="pill p-swap">돌아감 상쇄</span>같은 스타일 +/− 편차가 0으로 맞음</div>
-        <div><span class="pill p-adjdone">추가등록 반영</span>차이분등록으로 차이 0. 확인서 J열(추가등록수량)에 수량이 들어가고 K열은 0</div>
-      </div>
-    </details>
-    <div class="filters" id="filters" role="group" aria-label="상태별 보기"></div>
-    <div class="tbl"><table class="res"><thead><tr>
-      <th>상태</th><th>상품</th><th>컬러 / 사이즈</th><th>장부</th><th>실사(스캔)</th><th>추가등록</th><th>차이</th><th>비고 (확인서)</th><th>사유 (확인서)</th><th>할 일</th>
-    </tr></thead><tbody id="tb"></tbody></table></div>
-  </section>
-
-  <section class="card" id="out" hidden aria-labelledby="s3">
-    <div class="step"><b>3</b><h2 id="s3">확인서 내려받기</h2></div>
-    <div class="warn info" id="finalGuide"><b>재고조사가 모두 끝났다면</b> — 본사전송·차이분등록까지 마친 뒤 ARS에서 <b>재고실사 내역조회</b>(재고조사일 = 이번 조사일)를 받아 위 1번에 올리세요. 장부·실사·추가등록이 ARS 확정 수량으로 채워진 <b>최종 확인서</b>가 바로 만들어집니다.</div>
-    <p class="small muted" style="margin:0">재스캔 후 수량이 바뀌었다면 <b>새로 받은 '재고실사 본사전송' 파일만 다시 올리면</b> 리스트와 확인서가 바로 갱신됩니다. 확인서의 비고는 드랍다운으로 바꿀 수 있고, 추가등록수량(J)을 입력하면 현재차이수량(K)이 자동 계산됩니다.</p>
-    <div class="row"><button class="btn" id="dl">인수인계 재고조사 확인서 (.xlsx)</button><span id="dlmsg" class="small muted"></span></div>
+  <!-- ② 최종 확인서 -->
+  <section id="m2" role="tabpanel" aria-labelledby="tab2" hidden style="display:grid;gap:18px">
+    <section class="card">
+      <div class="when"><b>언제?</b> 재고조사가 <b>모두 끝난 뒤</b>(본사전송·차이분등록 완료) — 결재용 최종 확인서를 출력할 때 첨부하세요.</div>
+      <div class="scroll"><table class="guide" style="min-width:520px;border-collapse:collapse;width:100%">
+        <tr><th style="text-align:left">ARS 메뉴</th><th style="text-align:left">조회 조건</th><th style="text-align:left">쓰임</th></tr>
+        <tr><td><b>재고실사 내역조회</b></td><td>재고조사일 = <b>이번 조사일</b> · 조회구분 정상</td><td>장부 · 실사 · 추가등록 · 현재차이 (ARS 확정 수량)</td></tr>
+      </table></div>
+      <label class="drop" id="drop2" tabindex="0">
+        <input type="file" id="file2" accept=".xlsx,.xls">
+        <strong>재고실사 내역조회 파일을 끌어오거나 눌러서 선택</strong>
+        <span class="muted small">현재차이수량이 0이 아닌 품목만 양식에 담깁니다</span>
+      </label>
+      <div class="chips" id="chips2"></div>
+    </section>
+    <section class="card" id="sum2" hidden>
+      <div id="meta2" class="muted small"></div>
+      <div class="kpis" id="kpis2"></div>
+      <div id="warns2" style="display:grid;gap:8px"></div>
+      <div class="tbl"><table class="res" style="min-width:760px"><thead><tr>
+        <th>NO</th><th>상품</th><th>컬러 / 사이즈</th><th>장부</th><th>실사</th><th>추가등록</th><th>현재차이</th>
+      </tr></thead><tbody id="tb2"></tbody></table></div>
+      <div class="row"><button class="btn" id="dl2">재고실사 내역조회 붙여넣기 (.xlsx)</button><span id="dlmsg2" class="small muted"></span></div>
+      <p class="small muted" style="margin:0">내려받은 시트를 결재 확인서의 '차이내역 사유 작성서'에 그대로 붙여넣으면 됩니다.</p>
+    </section>
   </section>
 
   <footer>문의: 대경지역 지역장 · 데이터는 브라우저 안에서만 처리됩니다</footer>
@@ -166,30 +180,17 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script>
-/* 재고조사 차이 추적기 — 핵심 로직 (브라우저/Node 공용)
- * 입력: SheetJS workbook 3~4개 (재고실사 본사전송 / 스타일별 입출고실적조회 / 거래내역 상세조회 / [선택] 재고실사 내역조회)
- * 출력: analyze() → 차이 라인 + 비고/사유 + 재확인 플래그, buildWorkbook() → ExcelJS 확인서
+/* 재고조사 차이 추적기 v11 — 핵심 로직 (브라우저/Node 공용)
+ * ① 본사전송 전 차이 추적: 재고실사 본사전송 + 스타일별 입출고실적조회 → '본사전송 전 재고차이 추적' 양식
+ * ② 최종 확인서: 재고실사 내역조회(이번 조사일) → '재고실사 내역조회 붙여넣기'(차이내역 사유 작성서) 양식
  */
 (function (root) {
   'use strict';
 
-  var REASONS = [
-    '이전 재고조사 과다 반영 (시트첨부)',
-    '이전 재고조사 로스 반영 (시트첨부)',
-    '사이즈/컬러 돌아감',
-    '외짝발 로스 처리',
-    '분실',
-    '과재고(사유작성 必)'
-  ];
-  var R_PREV_OVER = REASONS[0], R_PREV_LOSS = REASONS[1], R_SWAP = REASONS[2], R_LOST = REASONS[4], R_OVER = REASONS[5];
-
   var TYPES = {
-    scan: { title: '재고실사 본사전송', label: '재고실사 본사전송', need: true },
-    book: { title: '스타일별 입출고실적조회', label: '스타일별 입출고 실적조회', need: true },
-    tx:   { title: '거래내역 상세조회', label: '거래내역 상세조회', need: true },
-    prev: { title: '재고실사 내역조회', label: '재고실사 내역조회 — 직전 조사 (선택)', need: false },
-    final: { title: '\u0000', label: '재고실사 내역조회 — 이번 조사 (최종 확인서용)', need: false },
-    adj:  { title: '재고실사 차이분등록', label: '재고실사 차이분등록 (선택)', need: false }
+    scan:  { title: '재고실사 본사전송', label: '재고실사 본사전송', mode: 1 },
+    book:  { title: '스타일별 입출고실적조회', label: '스타일별 입출고 실적조회', mode: 1 },
+    final: { title: '재고실사 내역조회', label: '재고실사 내역조회 (이번 조사일)', mode: 2 }
   };
 
   /* ---------- 공통 유틸 ---------- */
@@ -245,7 +246,11 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
   function parseFile(XLSX, wb, fileName) {
     var rows = sheetRows(XLSX, wb);
     var type = detectType(rows);
-    if (!type) return { type: null, fileName: fileName, error: '알 수 없는 파일 형식 (첫 줄 제목 확인)' };
+    if (!type) {
+      var t0 = rows.slice(0, 3).map(function (r) { return s(r && r[0]); }).join(' ');
+      var unused = ['거래내역 상세조회', '재고실사 차이분등록'].filter(function (x) { return t0.indexOf(x) >= 0; })[0];
+      return { type: null, fileName: fileName, error: unused ? '\'' + unused + '\' 파일은 이 도구에서 쓰지 않습니다' : '알 수 없는 파일 형식 (첫 줄 제목 확인)' };
+    }
     var hdr = findHeader(rows);
     if (hdr < 0) return { type: type, fileName: fileName, error: '머리글(스타일 열)을 찾지 못함' };
     var H = rows[hdr].map(s), col = {};
@@ -266,7 +271,7 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
     };
     if (type === 'scan') {
       var m = meta.match(/재고조사일자\s*:\s*([\d\-.]+)/); out.date = m ? toISO(m[1]) : '';
-      out.recs = recs.map(function (r) { var b = base(r); b.qty = n(g(r, '실사재고')); b.at = s(g(r, '등록일자')); return b; });
+      out.recs = recs.map(function (r) { var b = base(r); b.qty = n(g(r, '실사재고')); b.at = fmtAt(g(r, '등록일자')); b.loc = s(g(r, '상품위치')); return b; });
     } else if (type === 'book') {
       var m2 = meta.match(/조회기간\s*:\s*(\d{8})\s*~\s*(\d{8})/); out.date = m2 ? toISO(m2[2]) : '';
       out.recs = recs.map(function (r) { var b = base(r); b.qty = n(g(r, '현재재고')); b.price = n(g(r, '정상가')); return b; });
@@ -281,7 +286,7 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
       var m5 = meta.match(/재고조사일자\s*:\s*([\d\-.]+)/); out.date = m5 ? toISO(m5[1]) : '';
       out.recs = recs.map(function (r) { var b = base(r); b.qty = n(g(r, '수량')); b.note = s(g(r, '비고')); return b; })
                      .filter(function (x) { return x.qty !== 0; });
-    } else if (type === 'prev') {
+    } else if (type === 'final') {
       var m4 = meta.match(/재고조사일\s*:\s*([\d\-.]+)/); out.date = m4 ? toISO(m4[1]) : '';
       out.recs = recs.map(function (r) {
         var b = base(r); b.bookQ = n(g(r, '장부재고수량')); b.scanQ = n(g(r, '실사재고수량'));
@@ -292,477 +297,297 @@ footer{color:var(--muted);font-size:.82rem;text-align:center}
     return out;
   }
 
-  /* ---------- 분석 ---------- */
-  /* 재고실사 내역조회는 같은 메뉴라 날짜로 구분: 이번 조사일(이후) = 최종, 그 이전 = 직전 조사 */
-  function resolve(files) {
-    var F = {}, hist = [];
-    files.forEach(function (f) { if (!f || !f.type || f.error) return; if (f.type === 'prev' || f.type === 'final') hist.push(f); else F[f.type] = f; });
-    var ref = F.scan ? F.scan.date : (F.tx && F.tx.to ? addDays(F.tx.to, 1) : '');
-    hist.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
-    hist.forEach(function (h, i) {
-      var fin = ref ? h.date >= ref : i === hist.length - 1;
-      h.role = fin ? 'final' : 'prev'; F[h.role] = h;
-    });
-    return F;
-  }
-
-  function analyze(files, opts) {
-    opts = opts || {};
-    var F = resolve(files);
-    var warnings = [];
-    var FIN = F.final;
-    if (FIN) {
-      // 최종 모드: ARS 확정 수량(장부/실사/추가등록)을 그대로 사용
-      var price = {}; if (F.book) F.book.recs.forEach(function (r) { price[key(r.style, r.color, r.size)] = r.price; });
-      var note = {}; if (F.adj) F.adj.recs.forEach(function (r) { var k = key(r.style, r.color, r.size); (note[k] = note[k] || []).push(r.note); });
-      var mk = function (r, q) { var o = {}; for (var x in r) o[x] = r[x]; o.qty = q; return o; };
-      F.scan = { type: 'scan', date: FIN.date, store: FIN.store, recs: FIN.recs.map(function (r) { return mk(r, r.scanQ); }) };
-      F.book = { type: 'book', date: FIN.date, store: FIN.store, recs: FIN.recs.map(function (r) { var o = mk(r, r.bookQ); o.price = price[key(r.style, r.color, r.size)] || 0; return o; }) };
-      F.adj = { type: 'adj', date: FIN.date, recs: FIN.recs.filter(function (r) { return r.addQ; }).map(function (r) { var o = mk(r, r.addQ); var nt = note[key(r.style, r.color, r.size)]; o.note = nt ? nt.filter(Boolean).join(', ') : ''; return o; }) };
-      warnings.push({ lv: 'info', msg: '최종 모드: 재고실사 내역조회(' + FIN.date + ')의 장부·실사·추가등록 수량으로 확인서를 만듭니다.' + (F.tx ? '' : ' 거래내역이 없어 거래 기반 사유는 생략됩니다.') });
-    } else {
-      ['scan', 'book', 'tx'].forEach(function (t) { if (!F[t]) warnings.push({ lv: 'err', msg: TYPES[t].label + ' 파일이 없습니다.' }); });
-      if (!F.scan || !F.book || !F.tx) return { ok: false, warnings: warnings };
-    }
-    if (!F.tx) F.tx = { type: 'tx', recs: [], from: '', to: '' };
-    var tx = F.tx.recs;
-    var S = F.scan.date;                                  // 이번 조사일
-    var P = F.prev ? F.prev.date : F.tx.from;             // 직전 조사일 (내역조회 없으면 거래내역 시작일)
-    if (!F.prev) warnings.push({ lv: 'info', msg: '재고실사 내역조회가 없어 \'이전 재고조사 로스/과다 반영\' 판정은 생략했습니다. 올리면 자동으로 다시 분석됩니다.' });
-
-    // 매장 일치 확인
-    var stores = files.filter(function (f) { return f && f.store; }).map(function (f) { return f.store; });
-    var uniq = stores.filter(function (v, i) { return stores.indexOf(v) === i; });
-    if (uniq.length > 1) warnings.push({ lv: 'err', msg: '파일별 매장이 다릅니다: ' + uniq.join(', ') });
-    // 거래내역 = 직전 조사일 ~ 이번 조사 전날 (조사 당일 판매분은 매장에서 수기 조정)
-    var dayBefore = addDays(S, -1);
-    if (S && F.tx.to && F.tx.to >= S)
-      warnings.push({ lv: 'warn', msg: '거래내역에 조사일(' + md(S) + ') 이후 거래가 포함돼 있습니다. 당일분은 수기 조정하므로 조회기간 끝을 ' + md(dayBefore) + '로 다시 받으세요.' });
-    else if (S && F.tx.to && F.tx.to < dayBefore)
-      warnings.push({ lv: 'warn', msg: '거래내역이 ' + md(F.tx.to) + '까지만 있습니다. 조회기간 끝을 조사 전날(' + md(dayBefore) + ')로 다시 받으세요.' });
-    if (P && F.tx.from && F.tx.from !== P)
-      warnings.push({ lv: 'warn', msg: '거래내역 시작일(' + md(F.tx.from) + ')이 직전 재고조사일(' + md(F.prev.date) + ')과 다릅니다.' });
-    if (!FIN && F.book.date && S && F.book.date < S)
-      warnings.push({ lv: 'warn', msg: '전산재고 조회일(' + md(F.book.date) + ')이 조사일(' + md(S) + ')보다 이전입니다.' });
-
-    // 집계
-    var scan = {}, book = {}, info = {};
-    F.scan.recs.forEach(function (r) { var k = key(r.style, r.color, r.size); scan[k] = (scan[k] || 0) + r.qty; if (!info[k]) info[k] = r; });
-    F.book.recs.forEach(function (r) { var k = key(r.style, r.color, r.size); book[k] = (book[k] || 0) + r.qty; info[k] = r; });
-    // 차이분등록(본사전송 전 수기 보정): 실사 = 스캔 + 보정수량
-    var rawScan = {}, adj = {}, adjNote = {}, adjSum = 0, adjCnt = 0;
-    Object.keys(scan).forEach(function (k) { rawScan[k] = scan[k]; });
-    if (F.adj) {
-      if (!FIN && S && F.adj.date && F.adj.date !== S) warnings.push({ lv: 'err', msg: '차이분등록 조사일자(' + md(F.adj.date) + ')가 본사전송 조사일(' + md(S) + ')과 다릅니다.' });
-      F.adj.recs.forEach(function (r) {
-        var k = key(r.style, r.color, r.size);
-        adj[k] = (adj[k] || 0) + r.qty; scan[k] = (scan[k] || 0) + r.qty; if (!info[k]) info[k] = r;
-        if (r.note) (adjNote[k] = adjNote[k] || []).push(r.note);
-        adjSum += r.qty; adjCnt++;
-      });
-    }
-    var txBy = {}, txStyle = {};
-    tx.forEach(function (r) { var k = key(r.style, r.color, r.size); (txBy[k] = txBy[k] || []).push(r); (txStyle[r.style] = txStyle[r.style] || []).push(r); });
-
-    // 직전 조사 차이: 재고실사 내역조회 파일의 현재차이수량 ≠ 0 품목
-    var prevDiff = {}, prevRows = [];
-    if (F.prev) F.prev.recs.forEach(function (r) { if (!r.diff) return; var k = key(r.style, r.color, r.size); prevDiff[k] = (prevDiff[k] || 0) + r.diff; prevRows.push(r); });
-    var prevStyle = {}; prevRows.forEach(function (r) { (prevStyle[r.style] = prevStyle[r.style] || []).push(r); });
-
-    // 차이 라인
-    var lines = [];
-    var adjResolved = Object.keys(adj).filter(function (k) { return (scan[k] || 0) === (book[k] || 0); }).length;
-    var all = {}; Object.keys(scan).forEach(function (k) { all[k] = 1; }); Object.keys(book).forEach(function (k) { all[k] = 1; });
-    Object.keys(all).forEach(function (k) {
-      var b = book[k] || 0, sc = scan[k] || 0, d = sc - b;
-      if (d === 0) return;
-      var i = info[k];
-      lines.push({ k: k, brand: i.brand, product: i.product, style: i.style, own: i.own || i.style, color: i.color, size: i.size,
-                   book: b, scan: sc, diff: d, price: i.price || 0, timing: 0, swap: 0, partners: [], tags: [],
-                   rawScan: rawScan[k] || 0, adj: adj[k] || 0, adjNote: (adjNote[k] || []).join(', ') });
-    });
-
-    // ①-2 재스캔 필요: 같은 스타일에서 2개 이상 옵션이 통째로 안 찍힘(실사 0, 장부 있음)
-    var missBy = {};
-    lines.forEach(function (L) { if (L.diff < 0 && L.scan === 0 && L.book > 0) (missBy[L.style] = missBy[L.style] || []).push(L); });
-    //  (a) 스타일 전체 실사 0 & 장부 2개 이상  (b) 2개 이상 옵션이 실사 0
-    var stScan = {}, stBook = {};
-    Object.keys(scan).forEach(function (k) { var st = k.split('|')[0]; stScan[st] = (stScan[st] || 0) + scan[k]; });
-    Object.keys(book).forEach(function (k) { var st = k.split('|')[0]; stBook[st] = (stBook[st] || 0) + book[k]; });
-    Object.keys(missBy).forEach(function (st) {
-      var arr = missBy[st];
-      var whole = !(stScan[st] > 0) && stBook[st] >= 2;
-      if (!whole && arr.length < 2) return;
-      var tot = arr.reduce(function (a, L) { return a + L.diff; }, 0);
-      arr.forEach(function (L) { L.miss = { whole: whole, n: arr.length, tot: tot, opts: arr.map(function (x) { return (x.color + ' ' + x.size).trim(); }) }; });
-    });
-
-    // ② 사이즈/컬러 돌아감 매칭 (1차: 동일 스타일, 2차: 동일 브랜드+상품명 타 스타일코드)
-    function rem(L) { return Math.abs(L.diff) - L.timing - L.swap; }
-    function match(groupKeyFn, label) {
-      var G = {};
-      lines.forEach(function (L) { if (rem(L) > 0 && !L.miss) (G[groupKeyFn(L)] = G[groupKeyFn(L)] || []).push(L); });
-      Object.keys(G).forEach(function (g) {
-        var P_ = G[g].filter(function (L) { return L.diff > 0; }).sort(function (a, b) { return rem(b) - rem(a); });
-        var N_ = G[g].filter(function (L) { return L.diff < 0; }).sort(function (a, b) { return rem(b) - rem(a); });
-        // 1순위: 컬러 또는 사이즈가 같은 짝 → 2순위: 컬러·사이즈 모두 달라도 같은 상품이면 상쇄
-        [true, false].forEach(function (strict) {
-          P_.forEach(function (p) {
-            N_.forEach(function (q) {
-              var m = Math.min(rem(p), rem(q)); if (m <= 0) return;
-              if (label === 'cross' && p.style === q.style) return;
-              if (strict && p.color !== q.color && p.size !== q.size) return;
-              p.swap += m; q.swap += m;
-              p.partners.push({ L: q, q: m, cross: label === 'cross' }); q.partners.push({ L: p, q: m, cross: label === 'cross' });
-            });
-          });
-        });
-      });
-    }
-    match(function (L) { return L.style; }, 'style');
-    match(function (L) { return L.brand + '|' + L.product; }, 'cross');
-
-    // ③ 라인별 비고/사유 판정
-    function lastTx(L, pred) {
-      var arr = (txBy[L.k] || []).filter(function (r) { return (!S || r.date < S) && pred(r); });
-      return arr.length ? arr[arr.length - 1] : null;
-    }
-    function sumTx(L, pred) { return (txBy[L.k] || []).filter(function (r) { return (!S || r.date < S) && pred(r); }).reduce(function (a, r) { return a + r.inQ + r.outQ; }, 0); }
-    function opt(L) { return (L.color + ' ' + L.size).trim(); }
-    function cntTx(L, kind) { return (txBy[L.k] || []).filter(function (r) { return (!S || r.date < S) && r.kind === kind; }).reduce(function (a, r) { return a + r.inQ + r.outQ; }, 0); }
-    // 같은 날 같은 스타일 다른 옵션의 판매/판매취소 → 옵션 오스캔 정황
-    function sameDaySib(L, date) {
-      var sib = (txStyle[L.style] || []).filter(function (r) {
-        return r.date === date && (r.kind === '판매' || r.kind === '판매취소') && !(r.color === L.color && r.size === L.size);
-      });
-      if (!sib.length) return '';
-      return ' (같은 날 ' + sib.map(function (r) { return opt(r) + ' ' + r.kind; }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(', ') + ')';
-    }
-    function partnerText(L) {
-      return L.partners.map(function (p) {
-        return (p.cross ? p.L.style + ' ' : '') + opt(p.L) + '(' + signed(p.L.diff) + ')';
-      }).join(', ');
-    }
-
-    lines.forEach(function (L) {
-      var a = Math.abs(L.diff), residual = rem(L), plus = L.diff > 0, why = [], reason, flag;
-      if (L.miss) {
-        reason = R_LOST; flag = 'rescan';
-        why.push(L.miss.whole
-          ? '스타일 전체 실사 0 (장부 ' + stBook[L.style] + (L.miss.n > 1 ? ', ' + L.miss.n + '개 옵션' : '') + ') — 스타일 통째 스캔 누락 의심'
-          : '동일 스타일 ' + L.miss.n + '개 옵션(' + L.miss.opts.join(', ') + ') 실사 0, 합계 ' + L.miss.tot + ' — 여러 사이즈 스캔 누락 의심');
-      } else if (L.swap > 0) {
-        reason = R_SWAP; flag = residual > 0 ? 'swapgap' : 'swap';
-        why.push((L.partners.some(function (p) { return p.cross; }) ? '동일상품 타코드 ' : '동일스타일 ') + partnerText(L) + '와 상쇄');
-        if (residual > 0) why.push('잔여 ' + signed(plus ? residual : -residual) + ' 미확인');
-      } else {
-        var pd = prevDiff[L.k] || 0;
-        var trOut = lastTx(L, function (r) { return r.why === '점간이동출고'; });
-        var trIn = lastTx(L, function (r) { return r.why === '점간이동입고'; });
-        var ret = lastTx(L, function (r) { return r.kind === '매장반품'; });
-        var etcOut = lastTx(L, function (r) { return r.kind === '기타출고'; });
-        var logi = lastTx(L, function (r) { return r.kind === '물류출고' && r.inQ > 0; });
-        var cancel = lastTx(L, function (r) { return r.kind === '판매취소'; });
-        var sale = lastTx(L, function (r) { return r.kind === '판매'; });
-        var own = (txBy[L.k] || []).filter(function (r) { return (!S || r.date < S) && r.kind !== '재고조정'; });
-        var last = own.length ? own[own.length - 1] : null;
-        flag = 'normal';
-        if (plus && pd < 0) {
-          reason = R_PREV_LOSS; flag = 'prev';
-          why.push(md(P) + ' 재고조사 로스 ' + pd + ' 처리분 금회 발견 ' + signed(L.diff));
-        } else if (!plus && pd > 0) {
-          reason = R_PREV_OVER; flag = 'prev';
-          why.push(md(P) + ' 재고조사 과다 +' + pd + ' 반영분 금회 미발견 ' + L.diff);
-        } else if (plus) {
-          // 사유는 근거가 되는 전표/거래가 있을 때만 작성. 근거 없으면 비고만 채우고 사유 공란
-          reason = R_OVER;
-          if (L.book < 0) { flag = 'slip'; why.push('장부 ' + L.book + ' — 재고 없이 ' + (ret ? md(ret.date) + ' 매장반품' : sale ? md(sale.date) + ' 판매' : '출고') + ' 처리됨, 해당 거래 시 옵션 오스캔 추정'); }
-          else if (trOut) { flag = 'slip'; why.push(md(trOut.date) + ' 점간이동출고 ' + trOut.outQ + '족 등록 — 실물 매장 잔류(미발송/수량착오) 추정'); }
-          else if (ret) { flag = 'slip'; why.push(md(ret.date) + ' 매장반품 ' + ret.outQ + '족 등록 — 실물 미반품 추정'); }
-          else if (etcOut) { flag = 'slip'; why.push(md(etcOut.date) + ' 기타출고 등록 — 실물 매장 잔류 추정'); }
-          else if (trIn) { flag = 'slip'; why.push(md(trIn.date) + ' 점간이동입고 ' + trIn.inQ + '족 — 등록수량보다 실물 많이 입고 추정'); }
-          else if (cancel) {
-            flag = 'txhint';
-            why.push('판매 ' + cntTx(L, '판매') + '족·판매취소 ' + cntTx(L, '판매취소') + '족(최근 ' + md(cancel.date) + ') — 교환/반품 회수 실물 대비 전산 등록 착오 추정' + sameDaySib(L, cancel.date));
-          } else if (sale) {
-            flag = 'txhint';
-            why.push(md(sale.date) + ' 판매' + (cntTx(L, '판매') > 1 ? '(기간 내 ' + cntTx(L, '판매') + '족)' : '') + ' 등록 후 실물 잔류 — 판매 시 타 옵션 바코드 스캔 또는 교환 처리 누락 추정' + sameDaySib(L, sale.date));
-          } else if (last && last.inQ > 0) {
-            flag = 'txhint';
-            why.push(md(last.date) + ' 입고(' + last.why + ') ' + last.inQ + '족 후 거래 없음 — 등록수량보다 실물 많이 입고(오출고) 추정');
-          }
-        } else {
-          reason = R_LOST;
-          if (trIn) { flag = 'slip'; why.push(md(trIn.date) + ' 점간이동입고 ' + trIn.inQ + '족 등록 — 실물 미입고 추정'); }
-          else if (logi && logi.date >= addDays(S, -14)) { flag = 'slip'; why.push(md(logi.date) + ' 물류입고(' + logi.why + ') ' + logi.inQ + '족 — 입고 검수 누락/미도착 추정'); }
-          else if (cancel) { flag = 'slip'; why.push(md(cancel.date) + ' 판매취소 등록 — 반품 실물 미회수 추정'); }
-          else if (trOut) { flag = 'slip'; why.push(md(trOut.date) + ' 점간이동출고 — 등록보다 많이 발송 추정'); }
-          else if (last && last.inQ > 0) { flag = 'txhint'; why.push(md(last.date) + ' 입고(' + last.why + ') ' + last.inQ + '족 후 거래 없음 — 입고 미도착/검수 누락 추정'); }
-        }
-        if (reason !== R_PREV_LOSS && reason !== R_PREV_OVER) {
-          var ps = (prevStyle[L.style] || []).filter(function (r) { return key(r.style, r.color, r.size) !== L.k; });
-          if (ps.length) {
-            why.push(md(P) + ' 재고조사 동일스타일 ' + ps.map(function (r) { return opt(r) + '(' + signed(r.diff) + ')'; }).join(', ') + ' 발생 — 옵션 혼동 가능');
-            if (flag === 'normal') flag = 'prevhint';
-          }
-        }
-      }
-      // 화면 전용 행동 안내 (확인서에는 들어가지 않음)
-      var tip = { rescan: '재스캔 후 재업로드', slip: '전표와 실물 대조', swapgap: '잔여 수량 확인', prev: '확인서에 이전조사 시트 자동 첨부', txhint: '해당 일자 영수증·교환 내역 확인', normal: '근거 없음 — 사유 공란, 점장 확인' }[flag] || '';
-      if (L.adj) {
-        var at = '차이분등록 ' + signed(L.adj) + (L.adjNote ? '(' + L.adjNote + ')' : '');
-        if (L.rawScan === L.book) {
-          // 매장이 사유를 갖고 수기 등록한 건 → 등록 내용을 사유로 사용, 별도 확인 불필요
-          if (L.swap > 0) why.unshift(at);
-          else { why = [at]; flag = 'adjreg'; tip = '할 일 없음 (등록 사유 기재)'; }
-        }
-        else why.unshift(at + ' 반영 후 잔여 ' + signed(L.diff));
-      }
-      L.reason = reason; L.why = why.join(' / '); L.flag = flag; L.residual = residual; L.tip = tip;
-    });
-
-    // 차이분등록으로 차이가 0이 된 품목도 확인서에 남김 (J열 추가등록수량 기입, K=0)
-    //  비고/사유는 보정 전 차이 기준 판정을 그대로 사용
-    var resolved = 0;
-    if (false && F.adj && !opts.noAdj) { // 차이 0이 된 품목은 확인서에서 제외 (사용자 요청)
-      var raw = analyze(files.filter(function (f) { return !(f && f.type === 'adj'); }), { noAdj: true });
-      var rawBy = {}; (raw.lines || []).forEach(function (R) { rawBy[R.k] = R; });
-      Object.keys(adj).forEach(function (k) {
-        if (!adj[k] || (scan[k] || 0) !== (book[k] || 0)) return;
-        var R = rawBy[k]; if (!R) return;
-        var at = '차이분등록 ' + signed(adj[k]) + (adjNote[k] ? '(' + adjNote[k].join(', ') + ')' : '') + ' 반영 → 차이 0';
-        lines.push({ k: k, brand: R.brand, product: R.product, style: R.style, own: R.own, color: R.color, size: R.size,
-                     book: R.book, scan: R.book, diff: 0, price: R.price, rawScan: R.scan, adj: adj[k], adjNote: (adjNote[k] || []).join(', '),
-                     reason: R.reason, why: at + (R.reason === R_SWAP && R.why ? ' / ' + R.why.split(' / ')[0] : ''), flag: 'adjdone', residual: 0,
-                     tip: '할 일 없음 (추가등록 반영)', swap: 0, partners: [], tags: [] });
-        resolved++;
-      });
-    }
-    lines.sort(function (a, b) { return (a.brand + a.style + a.color).localeCompare(b.brand + b.style + b.color) || cmpSize(a.size, b.size); });
-    lines.forEach(function (L, i) { L.no = i + 1; });
-
-    var sum = function (arr, f) { return arr.reduce(function (a, x) { return a + f(x); }, 0); };
-    var stats = {
-      store: (F.scan.store || F.book.store), surveyDate: S, prevDate: P,
-      bookTotal: sum(F.book.recs, function (r) { return r.qty; }), scanTotal: sum(F.scan.recs, function (r) { return r.qty; }) + adjSum,
-      rawScanTotal: sum(F.scan.recs, function (r) { return r.qty; }), adjSum: adjSum, adjCnt: adjCnt, hasAdj: !!F.adj, adjResolved: adjResolved,
-      lines: lines.filter(function (L) { return L.diff !== 0; }).length, sheetLines: lines.length, adjLines: lines.filter(function (L) { return L.adj; }).length,
-      plusLines: lines.filter(function (L) { return L.diff > 0; }).length, plusQty: sum(lines.filter(function (L) { return L.diff > 0; }), function (L) { return L.diff; }),
-      minusLines: lines.filter(function (L) { return L.diff < 0; }).length, minusQty: sum(lines.filter(function (L) { return L.diff < 0; }), function (L) { return L.diff; }),
-      lossAmt: sum(lines.filter(function (L) { return L.diff < 0; }), function (L) { return L.diff * L.price; }),
-      txFrom: F.tx && F.tx.from, txTo: F.tx && F.tx.to, hasPrev: !!F.prev, final: !!FIN, finalDate: FIN ? FIN.date : ''
-    };
-    var prevAttach = prevRows.filter(function (r) {
-      return lines.some(function (L) { return (L.reason === R_PREV_LOSS || L.reason === R_PREV_OVER) && L.k === key(r.style, r.color, r.size); });
-    });
-    return { ok: true, warnings: warnings, lines: lines, stats: stats, prevAttach: prevAttach };
-  }
 
   function addDays(iso, d) { if (!iso) return ''; var t = new Date(iso + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + d); return t.toISOString().slice(0, 10); }
-  function cmpSize(a, b) { var x = parseFloat(a), y = parseFloat(b); if (!isNaN(x) && !isNaN(y) && x !== y) return x - y; return String(a).localeCompare(String(b)); }
+  function cmpSize(a, b) { var x = parseFloat(a), y = parseFloat(b); if (!isNaN(x) && !isNaN(y) && x !== y) return x - y; return cmpStr(a, b); }
+  function cmpStr(a, b) { a = String(a == null ? '' : a).toUpperCase(); b = String(b == null ? '' : b).toUpperCase(); return a < b ? -1 : a > b ? 1 : 0; }
+  // 오름차순: 브랜드 → 스타일 → 컬러 → 사이즈
+  function sortLines(a, b) { return cmpStr(a.brand, b.brand) || cmpStr(a.style, b.style) || cmpStr(a.color, b.color) || cmpSize(a.size, b.size); }
+  function fmtAt(v) {
+    if (v == null || v === '') return '';
+    if (typeof v === 'number') { var d = new Date(Date.UTC(1899, 11, 30) + Math.round(v * 86400000)); return d.toISOString().slice(0, 19).replace('T', ' '); }
+    return s(v);
+  }
+  function uniq(a) { return a.filter(function (v, i) { return v && a.indexOf(v) === i; }); }
+  function sum(arr, f) { return arr.reduce(function (a, x) { return a + f(x); }, 0); }
+  function pick(files) { var F = {}; files.forEach(function (f) { if (f && f.type && !f.error) F[f.type] = f; }); return F; }
+  function storeCheck(files, warnings) {
+    var st = uniq(files.filter(function (f) { return f && f.store; }).map(function (f) { return f.store; }));
+    if (st.length > 1) warnings.push({ lv: 'err', msg: '파일별 매장이 다릅니다: ' + st.join(', ') });
+  }
 
-  /* ---------- 확인서 엑셀 생성 (ExcelJS) ---------- */
-  function buildWorkbook(ExcelJS, res) {
-    var wb = new ExcelJS.Workbook();
-    wb.creator = '재고조사 차이 추적기';
+  /* ---------- ① 본사전송 전 차이 추적 ---------- */
+  function precheck(files) {
+    var F = pick(files), warnings = [];
+    if (!F.scan) warnings.push({ lv: 'err', msg: '재고실사 본사전송 파일이 없습니다.' });
+    if (!F.book) warnings.push({ lv: 'err', msg: '스타일별 입출고 실적조회 파일이 없습니다.' });
+    if (!F.scan || !F.book) return { ok: false, warnings: warnings };
+    storeCheck([F.scan, F.book], warnings);
+    var S = F.scan.date;
+    if (F.book.date && S && F.book.date < S) warnings.push({ lv: 'warn', msg: '전산재고 조회일(' + md(F.book.date) + ')이 조사일(' + md(S) + ')보다 이전입니다. 조사일 이후로 다시 받으세요.' });
+    var scan = {}, book = {}, info = {}, at = {}, loc = {};
+    F.scan.recs.forEach(function (r) {
+      var k = key(r.style, r.color, r.size); scan[k] = (scan[k] || 0) + r.qty; if (!info[k]) info[k] = r;
+      (at[k] = at[k] || []).push(r.at); (loc[k] = loc[k] || []).push(r.loc);
+    });
+    F.book.recs.forEach(function (r) { var k = key(r.style, r.color, r.size); book[k] = (book[k] || 0) + r.qty; info[k] = r; });
+    var all = {}; Object.keys(scan).concat(Object.keys(book)).forEach(function (k) { all[k] = 1; });
+    var lines = [];
+    Object.keys(all).forEach(function (k) {
+      var b = book[k] || 0, sc = scan[k] || 0; if (sc === b) return;
+      var i = info[k];
+      lines.push({ k: k, brand: i.brand, product: i.product, style: i.style, color: i.color, size: i.size, book: b, scan: sc, diff: sc - b,
+                   at: uniq(at[k] || []).join(', '), loc: uniq(loc[k] || []).join(', '), flag: sc - b > 0 ? 'plus' : 'minus' });
+    });
+    // 재스캔 필요: 스타일 전체 실사 0(장부 2개 이상) 또는 같은 스타일 2개 이상 옵션 실사 0
+    var stScan = {}, stBook = {}, miss = {};
+    Object.keys(scan).forEach(function (k) { var st = k.split('|')[0]; stScan[st] = (stScan[st] || 0) + scan[k]; });
+    Object.keys(book).forEach(function (k) { var st = k.split('|')[0]; stBook[st] = (stBook[st] || 0) + book[k]; });
+    lines.forEach(function (L) { if (L.diff < 0 && L.scan === 0 && L.book > 0) (miss[L.style] = miss[L.style] || []).push(L); });
+    Object.keys(miss).forEach(function (st) {
+      var arr = miss[st], whole = !(stScan[st] > 0) && stBook[st] >= 2;
+      if (!whole && arr.length < 2) return;
+      arr.forEach(function (L) { L.flag = 'rescan'; L.hint = whole ? '스타일 전체 미스캔 (장부 ' + stBook[st] + ')' : '같은 스타일 ' + arr.length + '개 옵션 미스캔'; });
+    });
+    lines.sort(sortLines); lines.forEach(function (L, i) { L.no = i + 1; });
+    var minus = lines.filter(function (L) { return L.diff < 0; }), plus = lines.filter(function (L) { return L.diff > 0; });
+    return { ok: true, mode: 1, warnings: warnings, lines: lines, stats: {
+      store: F.scan.store || F.book.store, surveyDate: S, bookDate: F.book.date,
+      bookTotal: sum(F.book.recs, function (r) { return r.qty; }), scanTotal: sum(F.scan.recs, function (r) { return r.qty; }),
+      lines: lines.length, plusLines: plus.length, plusQty: sum(plus, function (L) { return L.diff; }),
+      minusLines: minus.length, minusQty: sum(minus, function (L) { return L.diff; }),
+      rescan: lines.filter(function (L) { return L.flag === 'rescan'; }).length } };
+  }
+
+  /* ---------- ② 최종 확인서 ---------- */
+  function finalize(files) {
+    var F = pick(files), warnings = [];
+    if (!F.final) { warnings.push({ lv: 'err', msg: '재고실사 내역조회 파일이 없습니다.' }); return { ok: false, warnings: warnings }; }
+    var lines = F.final.recs.filter(function (r) { return r.scanQ + r.addQ - r.bookQ !== 0; }).map(function (r) {
+      var k = r.scanQ + r.addQ - r.bookQ;
+      return { brand: r.brand, product: r.product, style: r.style, own: r.own || r.style, color: r.color, size: r.size,
+               book: r.bookQ, scan: r.scanQ, add: r.addQ, diff: k, flag: k > 0 ? 'plus' : 'minus' };
+    });
+    var mismatch = F.final.recs.filter(function (r) { return r.scanQ + r.addQ - r.bookQ !== r.diff; }).length;
+    if (mismatch) warnings.push({ lv: 'warn', msg: '현재차이수량이 실사+추가등록−장부와 다른 품목이 ' + mismatch + '건 있습니다. 확인서는 수식(I+J−H)으로 계산합니다.' });
+    lines.sort(sortLines); lines.forEach(function (L, i) { L.no = i + 1; });
+    var minus = lines.filter(function (L) { return L.diff < 0; }), plus = lines.filter(function (L) { return L.diff > 0; });
+    return { ok: true, mode: 2, warnings: warnings, lines: lines, stats: {
+      store: F.final.store, surveyDate: F.final.date, lines: lines.length,
+      H: sum(lines, function (L) { return L.book; }), I: sum(lines, function (L) { return L.scan; }), J: sum(lines, function (L) { return L.add; }), K: sum(lines, function (L) { return L.diff; }),
+      fileK: sum(F.final.recs, function (r) { return r.diff; }),
+      plusLines: plus.length, plusQty: sum(plus, function (L) { return L.diff; }), minusLines: minus.length, minusQty: sum(minus, function (L) { return L.diff; }),
+      addLines: lines.filter(function (L) { return L.add; }).length } };
+  }
+
+  /* ---------- 엑셀 공통 서식 ---------- */
+  var thin = { style: 'thin', color: { argb: 'FF000000' } };
+  var BORDER = { top: thin, left: thin, bottom: thin, right: thin };
+  var WHITE = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+  var NUM = '#,##0_ ;[Red]\\-#,##0\\ ';
+  var F_DATA = { name: 'Tahoma', size: 9 }, F_KO = { name: '굴림체', size: 9 }, F_HEAD = { name: '굴림체', size: 9, bold: true };
+  function cell(ws, r, c, v, o) {
+    var x = ws.getCell(r, c); x.value = v; x.border = BORDER;
+    if (o.fill) x.fill = o.fill; x.font = o.font || F_DATA;
+    x.alignment = { horizontal: o.h || 'left', vertical: 'middle', wrapText: !!o.wrap };
+    if (o.num) x.numFmt = NUM;
+    return x;
+  }
+  function header(ws, r, names, fill) { names.forEach(function (h, i) { cell(ws, r, i + 1, h, { font: F_HEAD, h: 'center', fill: fill }); }); }
+  function dotDate(iso) { return iso ? iso.replace(/-/g, '.') + '.' : ''; }
+
+  /* ① '본사전송 전 재고차이 추적' 양식 */
+  function buildPrecheckWorkbook(ExcelJS, res) {
+    var wb = new ExcelJS.Workbook(); wb.creator = '재고조사 차이 추적기';
     var st = res.stats;
-    var thin = { style: 'thin', color: { argb: 'FF000000' } };
-    var border = { top: thin, left: thin, bottom: thin, right: thin };
-    var hdrFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFBFBF' } };
-    var white = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
-    var noteFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } };
-    var numFmt = '#,##0_ ;[Red]\\-#,##0\\ ';
-    var widths = [4, 13.1, 21.6, 11.8, 10.5, 23.6, 6.4, 11.4, 11.4, 11.4, 11.4, 30, 62];
-    var heads = ['NO', '브랜드', '상품', '스타일', '자사스타일', '컬러', '사이즈', '장부재고수량', '실사재고수량', '추가등록수량', '현재차이수량', '비고', '사유'];
-    var dateTxt = st.surveyDate ? st.surveyDate.replace(/-/g, '.') + '.' : '';
-
-    function sheet(name, tab, opt) {
-      var ws = wb.addWorksheet(name, { properties: { tabColor: { argb: tab } }, views: [{ state: 'frozen', ySplit: opt.dataRow - 1 }],
-        pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 } });
-      widths.forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
-      ws.getColumn(18).hidden = true; ws.getColumn(19).width = 30;
-      ws.mergeCells(1, 1, 1, 13);
-      var t = ws.getCell(1, 1); t.value = name.replace('원본데이터', '원본 데이터'); t.font = { name: '굴림체', size: 24, bold: true }; t.alignment = { horizontal: 'center', vertical: 'middle' };
-      ws.getRow(1).height = 31.5;
-      opt.top(ws);
-      var hr = opt.hdrRow;
-      heads.forEach(function (h, i) {
-        ws.mergeCells(hr, i + 1, hr + 1, i + 1);
-        var c = ws.getCell(hr, i + 1); c.value = h; c.font = { name: '굴림체', size: 9, bold: true }; c.fill = hdrFill; c.border = border;
-        c.alignment = { horizontal: 'center', vertical: 'middle' };
-        ws.getCell(hr + 1, i + 1).border = border;
-      });
-      // 드랍다운 목록 (S열)
-      REASONS.forEach(function (r, i) { var c = ws.getCell(hr + 1 + i, 19); c.value = r; c.font = { name: '굴림체', size: 9, bold: true }; c.alignment = { horizontal: 'center' }; });
-      var nr = opt.noteRow;
-      ws.mergeCells(nr, 1, nr + 3, 13);
-      var nc = ws.getCell(nr, 1); nc.value = opt.note; nc.font = { name: 'Tahoma', size: 11, bold: true }; nc.fill = noteFill; nc.border = border;
-      nc.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-      for (var rr = nr; rr < nr + 4; rr++) ws.getRow(rr).height = opt.noteH;
-      var listRef = '$S$' + (hr + 1) + ':$S$' + (hr + REASONS.length);
-      var rowsN = Math.max(res.lines.length, 1);
-      res.lines.forEach(function (L, i) {
-        var r = opt.dataRow + i;
-        var vals = [L.no, L.brand, L.product, L.style, L.own, L.color, L.size, L.book, (L.rawScan != null ? L.rawScan : L.scan), (L.adj || null), null, opt.withReason ? L.reason : null, opt.withReason ? L.why : null];
-        vals.forEach(function (v, j) {
-          var c = ws.getCell(r, j + 1); c.value = v; c.border = border; c.fill = white;
-          c.font = { name: j === 11 ? '굴림체' : 'Tahoma', size: 9 };
-          c.alignment = { horizontal: j === 0 ? 'center' : (j >= 7 && j <= 10 ? 'right' : 'left'), vertical: 'middle', wrapText: j === 12 };
-          if (j >= 7 && j <= 10) c.numFmt = numFmt;
-        });
-        ws.getCell(r, 11).value = { formula: 'I' + r + '+J' + r + '-H' + r, result: L.diff };
-        ws.getCell(r, 12).dataValidation = { type: 'list', allowBlank: true, formulae: [listRef] };
-      });
-      // 빈 입력행 10줄 여유 (드랍다운 포함)
-      for (var e = 0; e < 10; e++) {
-        var r2 = opt.dataRow + res.lines.length + e;
-        for (var j = 1; j <= 13; j++) { var c2 = ws.getCell(r2, j); c2.border = border; c2.font = { name: 'Tahoma', size: 9 }; }
-        ws.getCell(r2, 12).dataValidation = { type: 'list', allowBlank: true, formulae: [listRef] };
-      }
-      // 합계
-      var lastR = opt.dataRow + res.lines.length + 10;
-      var first = opt.dataRow, last = opt.dataRow + rowsN - 1;
-      ws.getCell(lastR, 7).value = '합계';
-      ['H', 'I', 'J', 'K'].forEach(function (cl, i) {
-        var c = ws.getCell(lastR, 8 + i); c.value = { formula: 'SUM(' + cl + first + ':' + cl + (lastR - 1) + ')' }; c.numFmt = numFmt; c.font = { name: 'Tahoma', size: 9, bold: true }; c.border = border;
-      });
-      ws.getCell(lastR, 7).font = { name: '굴림체', size: 9, bold: true }; ws.getCell(lastR, 7).border = border;
-      ws.pageSetup.printArea = 'A1:M' + lastR;
-      return ws;
-    }
-
-    sheet('차이내역 원본데이터', 'FFFFFF00', {
-      hdrRow: 2, noteRow: 4, noteH: 15, dataRow: 8, withReason: false,
-      note: '1. 매장명 : ' + (st.store || '') + '\n2. 재고조사일자 : ' + dateTxt + '\n3. 장부 ' + st.bookTotal + ' / 실사 ' + st.scanTotal + ' / 차이 ' + st.lines + '줄 (과다 +' + st.plusQty + ', 부족 ' + st.minusQty + ')\n4. 추가등록수량(J)은 전산 추가등록 후 입력 → 현재차이수량(K) 자동 재계산',
-      top: function () {}
+    var ws = wb.addWorksheet('본사전송 전 재고차이 추적', { views: [{ state: 'frozen', ySplit: 2, showGridLines: false }] });
+    [4.1, 11.9, 30.9, 14.3, 28.8, 6.4, 11.4, 11.4, 11.4, 21.3, 24.1].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+    ws.mergeCells('B1:K1');
+    var t = ws.getCell('B1'); t.value = '본사전송 전 재고차이 추적  (' + (st.store || '') + ' · ' + dotDate(st.surveyDate) + ')';
+    t.font = { name: '굴림체', size: 16, bold: true }; t.alignment = { horizontal: 'center', vertical: 'middle' }; ws.getRow(1).height = 30;
+    header(ws, 2, ['NO.', '브랜드', '상품', '스타일', '컬러', '사이즈', '장부재고수량', '실사재고수량', '현재차이수량', '등록일자', '상품위치'],
+           { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } });
+    var r0 = 3;
+    res.lines.forEach(function (L, i) {
+      var r = r0 + i;
+      cell(ws, r, 1, L.no, { fill: WHITE });
+      [L.brand, L.product, L.style, L.color, L.size].forEach(function (v, j) { cell(ws, r, 2 + j, v, { fill: WHITE }); });
+      cell(ws, r, 7, L.book, { fill: WHITE, h: 'right', num: true });
+      cell(ws, r, 8, L.scan, { fill: WHITE, h: 'right', num: true });
+      cell(ws, r, 9, { formula: 'H' + r + '-G' + r, result: L.diff }, { fill: WHITE, h: 'right', num: true });
+      cell(ws, r, 10, L.at || null, { fill: WHITE, font: F_KO, wrap: true });
+      cell(ws, r, 11, L.loc || null, { fill: WHITE, wrap: true });
     });
-    sheet('차이내역 사유 작성서', 'FF00B050', {
-      hdrRow: 5, noteRow: 7, noteH: 30, dataRow: 11, withReason: true,
-      note: "1. 스캔 오류로 인한 추가등록 건에 대해서는 추가등록 메뉴 내에 비고란에 작성 할 것! 해당 시트에는 최종결과에 대한 차이수량의 사유만 작성!!\n2. 이전 재고조사 로스/과다 반영 선택 시 재고실사 내역조회 메뉴를 통해 이전 재고조사 결과 조회 후 내역 캡쳐하여 첨부할 것!!\n3. 사이즈/컬러 돌아감 선택 시 부족/과다 재고의 편차가 '0'이 맞는 지 확인할 것!!\n4. 과재고의 경우 충분한 확인 과정을 거쳐 그 사유를  필히 작성할 것!!",
-      top: function (ws) {
-        ws.mergeCells(2, 1, 2, 13); ws.mergeCells(3, 1, 3, 13); ws.mergeCells(4, 1, 4, 13);
-        var a2 = ws.getCell(2, 1); a2.value = '※ ARS 메뉴 재고실사 내역 조회 후 차이 수량 발생한 내역만 복사해 붙여넣고 해당 사유 작성 (최종 내역)';
-        a2.font = { name: '굴림체', size: 11, bold: true, color: { argb: 'FFFF0000' } }; a2.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-        var a3 = ws.getCell(3, 1); a3.value = ' ▩ 매장명 : ' + (st.store || ''); a3.font = { name: '굴림체', size: 10, bold: true };
-        var a4 = ws.getCell(4, 1); a4.value = ' ▩ 재고조사일자 : ' + dateTxt; a4.font = { name: '굴림체', size: 10, bold: true };
-      }
+    var last = r0 + res.lines.length + 10;  // 빈 줄 10개 (수기 추가용)
+    for (var r = r0 + res.lines.length; r < last; r++) for (var c = 1; c <= 11; c++) cell(ws, r, c, null, { fill: WHITE, h: c >= 7 && c <= 9 ? 'right' : 'left', num: c >= 7 && c <= 9 });
+    cell(ws, last, 6, '합계', { font: F_HEAD, h: 'center' });
+    ['G', 'H', 'I'].forEach(function (cl, i) {
+      cell(ws, last, 7 + i, { formula: 'SUM(' + cl + r0 + ':' + cl + (last - 1) + ')', result: [sum(res.lines, function (L) { return L.book; }), sum(res.lines, function (L) { return L.scan; }), sum(res.lines, function (L) { return L.diff; })][i] },
+           { font: { name: 'Tahoma', size: 9, bold: true }, h: 'right', num: true });
     });
-
-    // 이전 재고조사 내역 첨부 시트 (해당 시)
-    if (res.prevAttach && res.prevAttach.length) {
-      var ws3 = wb.addWorksheet('이전재고조사 첨부', { properties: { tabColor: { argb: 'FF5B9BD5' } } });
-      ws3.addRow(['이전 재고조사(' + (st.prevDate || '') + ') 차이내역 — 비고 \'이전 재고조사 로스/과다 반영\' 근거']).font = { bold: true, size: 12 };
-      var h3 = ws3.addRow(['브랜드', '상품', '스타일', '컬러', '사이즈', '직전 차이수량', '출처']);
-      h3.eachCell(function (c) { c.font = { bold: true }; c.fill = hdrFill; c.border = border; });
-      res.prevAttach.forEach(function (r) { ws3.addRow([r.brand, r.product, r.style, r.color, r.size, r.diff, '재고실사 내역조회 (' + (st.prevDate || '') + ')']).eachCell(function (c) { c.border = border; }); });
-      [13, 26, 16, 18, 8, 12, 26].forEach(function (w, i) { ws3.getColumn(i + 1).width = w; });
-    }
+    ws.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printArea: 'A1:K' + last };
     return wb;
   }
 
-  var api = { REASONS: REASONS, TYPES: TYPES, parseFile: parseFile, resolve: resolve, analyze: analyze, buildWorkbook: buildWorkbook, md: md };
+  /* ② '재고실사 내역조회 붙여넣기' 양식 (차이내역 사유 작성서) */
+  function buildFinalWorkbook(ExcelJS, res) {
+    var wb = new ExcelJS.Workbook(); wb.creator = '재고조사 차이 추적기';
+    var st = res.stats;
+    var ws = wb.addWorksheet('차이내역 사유 작성서', { properties: { tabColor: { argb: 'FF00B050' } }, views: [{ state: 'frozen', ySplit: 5, showGridLines: false }] });
+    [4, 13.1, 21.6, 11.8, 10.5, 23.6, 6.4, 11.4, 11.4, 11.4, 11.4].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+    ['A1:K1', 'A2:K2', 'A3:K3', 'A4:K4'].forEach(function (m) { ws.mergeCells(m); });
+    var a1 = ws.getCell('A1'); a1.value = '차이내역 사유 작성서'; a1.font = { name: '굴림체', size: 24, bold: true }; a1.alignment = { horizontal: 'center', vertical: 'middle' }; ws.getRow(1).height = 31.5;
+    var a2 = ws.getCell('A2'); a2.value = '※ ARS 메뉴 재고실사 내역 조회 후 차이 수량 발생한 내역만 복사해 붙여넣고 해당 사유 작성 (최종 내역)';
+    a2.font = { name: '굴림체', size: 11, bold: true, color: { argb: 'FFFF0000' } }; a2.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    var a3 = ws.getCell('A3'); a3.value = ' ▩ 매장명 : ' + (st.store || ''); a3.font = { name: '굴림체', size: 10, bold: true };
+    var a4 = ws.getCell('A4'); a4.value = ' ▩ 재고조사일자 : ' + dotDate(st.surveyDate); a4.font = { name: '굴림체', size: 10, bold: true };
+    header(ws, 5, ['NO', '브랜드', '상품', '스타일', '자사스타일', '컬러', '사이즈', '장부재고수량', '실사재고수량', '추가등록수량', '현재차이수량'],
+           { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFBFBF' } });
+    var r0 = 6;
+    res.lines.forEach(function (L, i) {
+      var r = r0 + i;
+      cell(ws, r, 1, L.no, { fill: WHITE, h: 'center' });
+      [L.brand, L.product, L.style, L.own, L.color, L.size].forEach(function (v, j) { cell(ws, r, 2 + j, v, { fill: WHITE }); });
+      cell(ws, r, 8, L.book, { fill: WHITE, h: 'right', num: true });
+      cell(ws, r, 9, L.scan, { fill: WHITE, h: 'right', num: true });
+      cell(ws, r, 10, L.add || null, { fill: WHITE, h: 'right', num: true });
+      cell(ws, r, 11, { formula: 'I' + r + '+J' + r + '-H' + r, result: L.diff }, { fill: WHITE, h: 'right', num: true });
+    });
+    var last = r0 + res.lines.length + 10;
+    for (var r = r0 + res.lines.length; r < last; r++) for (var c = 1; c <= 11; c++) cell(ws, r, c, null, { fill: WHITE, h: c >= 8 ? 'right' : 'left', num: c >= 8 });
+    cell(ws, last, 7, '합계', { font: F_HEAD, h: 'center' });
+    ['H', 'I', 'J', 'K'].forEach(function (cl, i) {
+      cell(ws, last, 8 + i, { formula: 'SUM(' + cl + r0 + ':' + cl + (last - 1) + ')', result: [st.H, st.I, st.J, st.K][i] },
+           { font: { name: 'Tahoma', size: 9, bold: true }, h: 'right', num: true });
+    });
+    ws.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printArea: 'A1:K' + (last + 5) };
+    return wb;
+  }
+
+  var api = { TYPES: TYPES, parseFile: parseFile, precheck: precheck, finalize: finalize,
+              buildPrecheckWorkbook: buildPrecheckWorkbook, buildFinalWorkbook: buildFinalWorkbook, md: md };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.InvLogic = api;
 })(this);
 
 </script>
 <script>
 (function(){
-  var L = window.InvLogic, files = {}, res = null, filter = 'all';
-  var FLAGS = [
-    ['rescan','재스캔 필요'],['slip','전표 확인'],
-    ['swapgap','돌아감 잔여'],['prev','이전조사 반영'],['txhint','거래내역 추정'],['prevhint','이전조사 연관'],['normal','사유 미확정'],['swap','돌아감 상쇄'],['adjreg','수기 등록'],['adjdone','추가등록 반영']];
-  var FL = {}; FLAGS.forEach(function(f){ FL[f[0]] = f[1]; });
-  var $ = function(id){ return document.getElementById(id); };
+  var L = window.InvLogic, $ = function(id){ return document.getElementById(id); };
+  var store = {1:{}, 2:{}}, res = {1:null, 2:null}, filter1 = 'all';
   function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
   function fmt(x){ return Number(x).toLocaleString('ko-KR'); }
   function sg(x){ return (x>0?'+':'')+fmt(x); }
+  function kpis(el, arr){ $(el).innerHTML = arr.map(function(k){ return '<div class="kpi '+(k[2]||'')+'"><small>'+k[0]+'</small><div>'+k[1]+'</div></div>'; }).join(''); }
+  function warns(el, w){ $(el).innerHTML = w.map(function(x){ return '<div class="warn '+(x.lv==='warn'?'':x.lv)+'">'+esc(x.msg)+'</div>'; }).join(''); }
 
-  var drop = $('drop'), input = $('file');
-  ['dragenter','dragover'].forEach(function(e){ drop.addEventListener(e,function(ev){ ev.preventDefault(); drop.classList.add('on'); }); });
-  ['dragleave','drop'].forEach(function(e){ drop.addEventListener(e,function(ev){ ev.preventDefault(); drop.classList.remove('on'); }); });
-  drop.addEventListener('drop',function(ev){ handle(ev.dataTransfer.files); });
-  drop.addEventListener('keydown',function(ev){ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); input.click(); } });
-  input.addEventListener('change',function(){ handle(input.files); input.value=''; });
+  // 탭
+  function setTab(m){
+    [1,2].forEach(function(i){ $('tab'+i).setAttribute('aria-selected', String(i===m)); $('m'+i).hidden = i!==m; });
+    try{ localStorage.setItem('igt-tab', m); }catch(e){}
+  }
+  $('tab1').onclick = function(){ setTab(1); }; $('tab2').onclick = function(){ setTab(2); };
+  try{ var t = +localStorage.getItem('igt-tab'); if(t===2) setTab(2); }catch(e){}
 
-  function handle(list){
-    var arr = Array.prototype.slice.call(list||[]);
-    Promise.all(arr.map(function(f){
+  // 업로드
+  [1,2].forEach(function(m){
+    var drop = $('drop'+m), input = $('file'+m);
+    ['dragenter','dragover'].forEach(function(e){ drop.addEventListener(e,function(ev){ ev.preventDefault(); drop.classList.add('on'); }); });
+    ['dragleave','drop'].forEach(function(e){ drop.addEventListener(e,function(ev){ ev.preventDefault(); drop.classList.remove('on'); }); });
+    drop.addEventListener('drop',function(ev){ handle(m, ev.dataTransfer.files); });
+    drop.addEventListener('keydown',function(ev){ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); input.click(); } });
+    input.addEventListener('change',function(){ handle(m, input.files); input.value=''; });
+  });
+  function handle(m, list){
+    Promise.all(Array.prototype.slice.call(list||[]).map(function(f){
       return f.arrayBuffer().then(function(buf){
-        try { var wb = XLSX.read(buf,{type:'array'}); return L.parseFile(XLSX, wb, f.name); }
+        try { return L.parseFile(XLSX, XLSX.read(buf,{type:'array'}), f.name); }
         catch(e){ return { type:null, fileName:f.name, error:'엑셀 파일을 읽지 못함' }; }
       });
     })).then(function(parsed){
-      parsed.forEach(function(p){ if(p.type && !p.error) files[p.type==='prev' ? 'hist_'+p.date : p.type]=p; else files['bad_'+p.fileName]=p; });
-      run();
+      var S = store[m];
+      Object.keys(S).forEach(function(k){ if(k.indexOf('bad_')===0) delete S[k]; });
+      parsed.forEach(function(p){
+        if(p.type && !p.error && L.TYPES[p.type].mode !== m)
+          p = { fileName:p.fileName, error:'이 파일은 '+(L.TYPES[p.type].mode===1?'① 본사전송 전 차이 추적':'② 최종 확인서 출력')+'용입니다. 위에서 탭을 바꿔 올리세요.' };
+        if(p.type && !p.error) S[p.type] = p; else S['bad_'+p.fileName] = p;
+      });
+      run(m);
     });
   }
+  function chips(m){
+    var S = store[m];
+    var html = Object.keys(L.TYPES).filter(function(t){ return L.TYPES[t].mode===m; }).map(function(t){
+      var f = S[t], T = L.TYPES[t];
+      var d = f ? esc(f.fileName)+' · '+fmt(f.rows)+'행'+(f.date?' · '+f.date:'') : '필수 — 아직 없음';
+      return '<div class="chip '+(f?'ok':'')+'"><i class="dot"></i><span><b>'+esc(T.label)+'</b><br><span class="muted">'+d+'</span></span></div>';
+    });
+    Object.keys(S).filter(function(k){return k.indexOf('bad_')===0;}).forEach(function(k){
+      html.push('<div class="chip"><i class="dot" style="background:var(--red)"></i><span><b>'+esc(S[k].fileName)+'</b><br><span class="muted">'+esc(S[k].error)+'</span></span></div>');
+    });
+    $('chips'+m).innerHTML = html.join('');
+  }
+  function list(m){ return Object.keys(store[m]).filter(function(k){ return k.indexOf('bad_')!==0; }).map(function(k){ return store[m][k]; }); }
 
-  function goodFiles(){ return Object.keys(files).filter(function(k){ return k.indexOf('bad_')!==0; }).map(function(k){ return files[k]; }); }
-  function chips(){
-    var R = L.resolve(goodFiles());
-    var html = Object.keys(L.TYPES).map(function(t){
-      var f = R[t], T = L.TYPES[t];
-      var cls = f ? 'ok' : (T.need && !R.final ? '' : 'opt');
-      var d = f ? esc(f.fileName)+' · '+fmt(f.rows)+'행'+(f.date?' · '+f.date:'')+(f.from?' · '+f.from+'~'+f.to:'') : (t==='final'?'조사 완료 후 올리면 최종 확인서':R.final&&(t==='scan'||t==='book')?'최종 모드 — 필요 없음':R.final&&t==='tx'?'최종 모드 — 올리면 사유 추가':T.need?'필수 — 아직 없음':'선택 — 없어도 됩니다');
-      return '<div class="chip '+cls+'"><i class="dot"></i><span><b>'+esc(T.label)+'</b><br><span class="muted">'+d+'</span></span></div>';
-    });
-    Object.keys(files).filter(function(k){return k.indexOf('bad_')===0;}).forEach(function(k){
-      html.push('<div class="chip"><i class="dot" style="background:var(--red)"></i><span><b>'+esc(files[k].fileName)+'</b><br><span class="muted">'+esc(files[k].error)+'</span></span></div>');
-    });
-    $('chips').innerHTML = html.join('');
+  function run(m){
+    chips(m);
+    var r = m===1 ? L.precheck(list(m)) : L.finalize(list(m));
+    res[m] = r.ok ? r : null;
+    $('sum'+m).hidden = !r.ok;
+    if(!r.ok) return;
+    if(m===1) render1(); else render2();
   }
 
-  function run(){
-    chips();
-    var list = goodFiles(), R = L.resolve(list);
-    if(!R.final && (!R.scan || !R.book || !R.tx)){ $('sum').hidden = true; $('out').hidden = true; return; }
-    res = L.analyze(list);
-    if(!res.ok){ return; }
-    var s = res.stats;
-    $('finalGuide').hidden = !!s.final;
-    $('dl').textContent = s.final ? '최종 인수인계 재고조사 확인서 (.xlsx)' : '인수인계 재고조사 확인서 (.xlsx) — 중간 확인용';
-    $('meta').textContent = (s.final?'[최종] ':'')+(s.store||'')+' · 이번 조사일 '+s.surveyDate+(s.prevDate?' · 직전 조사일 '+s.prevDate:'')+(s.txFrom?' · 거래내역 '+s.txFrom+' ~ '+s.txTo:'');
-    $('kpis').innerHTML = [
-      ['장부(전산)',fmt(s.bookTotal)],['실사(스캔)',fmt(s.rawScanTotal)]].concat(s.hasAdj?[['추가등록',sg(s.adjSum)+' ('+s.adjCnt+'건)']]:[]).concat([['확인서 품목',fmt(s.lines)+'줄'],
-      ['과다',sg(s.plusQty)+' ('+s.plusLines+'줄)','plus'],['부족',sg(s.minusQty)+' ('+s.minusLines+'줄)','minus'],].concat(s.lossAmt?[['부족 금액(정상가)',(s.lossAmt/10000).toLocaleString('ko-KR',{maximumFractionDigits:1})+'만원','minus']]:[])
-    ).map(function(k){ return '<div class="kpi '+(k[2]||'')+'"><small>'+k[0]+'</small><div>'+k[1]+'</div></div>'; }).join('');
-    $('warns').innerHTML = res.warnings.map(function(w){ return '<div class="warn '+(w.lv==='warn'?'':w.lv)+'">'+esc(w.msg)+'</div>'; }).join('');
-    var cnt = {}; res.lines.forEach(function(x){ cnt[x.flag]=(cnt[x.flag]||0)+1; });
-    $('filters').innerHTML = '<button class="f" data-f="all" aria-pressed="'+(filter==='all')+'">전체 <em>'+res.lines.length+'</em></button>' +
-      FLAGS.filter(function(f){ return cnt[f[0]]; }).map(function(f){
-        return '<button class="f" data-f="'+f[0]+'" aria-pressed="'+(filter===f[0])+'"><span class="pill p-'+f[0]+'">'+f[1]+'</span><em>'+cnt[f[0]]+'</em></button>';
-      }).join('');
-    Array.prototype.forEach.call($('filters').querySelectorAll('.f'),function(b){
-      b.addEventListener('click',function(){ filter = b.getAttribute('data-f'); run(); });
-    });
-    var order = {}; FLAGS.forEach(function(f,i){ order[f[0]]=i; });
-    var rows = res.lines.filter(function(x){ return filter==='all'||x.flag===filter; })
-      .slice().sort(function(a,b){ return (order[a.flag]-order[b.flag]) || a.no-b.no; });
-    $('tb').innerHTML = rows.map(function(x){
-      return '<tr><td><span class="pill p-'+x.flag+'">'+FL[x.flag]+'</span></td>'+
+  var FL1 = [['rescan','재스캔 필요'],['minus','부족 (−)'],['plus','과다 (+)']];
+  function render1(){
+    var r = res[1], s = r.stats;
+    $('meta1').textContent = (s.store||'')+' · 조사일 '+s.surveyDate+' · 전산재고 조회일 '+(s.bookDate||'-');
+    kpis('kpis1', [['장부(전산)',fmt(s.bookTotal)],['실사(스캔)',fmt(s.scanTotal)],['차이 품목',fmt(s.lines)+'줄'],
+      ['부족',sg(s.minusQty)+' ('+s.minusLines+'줄)','minus'],['과다',sg(s.plusQty)+' ('+s.plusLines+'줄)','plus'],['재스캔 필요',s.rescan+'줄','minus']]);
+    warns('warns1', r.warnings);
+    var cnt = {}; r.lines.forEach(function(x){ cnt[x.flag]=(cnt[x.flag]||0)+1; });
+    $('filters1').innerHTML = '<button class="f" data-f="all" aria-pressed="'+(filter1==='all')+'">전체 <em>'+r.lines.length+'</em></button>'+
+      FL1.filter(function(f){ return cnt[f[0]]; }).map(function(f){ return '<button class="f" data-f="'+f[0]+'" aria-pressed="'+(filter1===f[0])+'"><span class="pill p-'+(f[0]==='rescan'?'rescan':f[0])+'">'+f[1]+'</span><em>'+cnt[f[0]]+'</em></button>'; }).join('');
+    Array.prototype.forEach.call($('filters1').querySelectorAll('.f'),function(b){ b.onclick = function(){ filter1 = b.getAttribute('data-f'); render1(); }; });
+    var LB = {rescan:'재스캔 필요', minus:'부족', plus:'과다'};
+    $('tb1').innerHTML = r.lines.filter(function(x){ return filter1==='all'||x.flag===filter1; }).map(function(x){
+      return '<tr><td><span class="pill p-'+x.flag+'">'+LB[x.flag]+'</span>'+(x.hint?'<div class="sub">'+esc(x.hint)+'</div>':'')+'</td>'+
         '<td><div class="prod">'+esc(x.brand)+' '+esc(x.product)+'</div><div class="sub">'+esc(x.style)+'</div></td>'+
-        '<td>'+esc(x.color)+' / <b>'+esc(x.size)+'</b></td>'+
-        '<td class="n">'+fmt(x.book)+'</td><td class="n">'+fmt(x.rawScan)+'</td><td class="n">'+(x.adj?'<b>'+sg(x.adj)+'</b>':'<span class="muted">·</span>')+'</td>'+
-        '<td class="n d '+(x.diff>0?'plus':x.diff<0?'minus':'')+'">'+sg(x.diff)+'</td>'+
-        '<td>'+esc(x.reason)+'</td><td class="small">'+(x.why?esc(x.why):'<span class="muted">공란</span>')+'</td><td class="small muted">'+esc(x.tip)+'</td></tr>';
-    }).join('') || '<tr><td colspan="10" class="muted">해당 상태의 품목이 없습니다.</td></tr>';
-    $('sum').hidden = false; $('out').hidden = false;
+        '<td>'+esc(x.color)+' / <b>'+esc(x.size)+'</b></td><td class="n">'+fmt(x.book)+'</td><td class="n">'+fmt(x.scan)+'</td>'+
+        '<td class="n d '+(x.diff>0?'plus':'minus')+'">'+sg(x.diff)+'</td>'+
+        '<td class="loc">'+(x.at?esc(x.at).replace(/, /g,'<br>'):'<span class="muted">미스캔</span>')+'</td><td class="small">'+esc(x.loc)+'</td></tr>';
+    }).join('') || '<tr><td colspan="8" class="muted">해당 품목이 없습니다.</td></tr>';
+  }
+  function render2(){
+    var r = res[2], s = r.stats;
+    $('meta2').textContent = (s.store||'')+' · 재고조사일 '+s.surveyDate;
+    kpis('kpis2', [['확인서 품목',fmt(s.lines)+'줄'],['장부 합계',fmt(s.H)],['실사 합계',fmt(s.I)],['추가등록 합계',sg(s.J)+' ('+s.addLines+'줄)'],
+      ['현재차이 합계',sg(s.K), s.K<0?'minus':'plus'],['부족 / 과다',sg(s.minusQty)+' / '+sg(s.plusQty)]]);
+    var w = r.warnings.slice();
+    w.push({ lv: s.K===s.fileK?'info':'warn', msg: s.K===s.fileK ? '현재차이 합계 '+sg(s.K)+' — ARS 내역조회 합계와 일치합니다.' : '현재차이 합계 '+sg(s.K)+'가 ARS 내역조회 합계 '+sg(s.fileK)+'와 다릅니다.' });
+    warns('warns2', w);
+    $('tb2').innerHTML = r.lines.map(function(x){
+      return '<tr><td class="n">'+x.no+'</td><td><div class="prod">'+esc(x.brand)+' '+esc(x.product)+'</div><div class="sub">'+esc(x.style)+'</div></td>'+
+        '<td>'+esc(x.color)+' / <b>'+esc(x.size)+'</b></td><td class="n">'+fmt(x.book)+'</td><td class="n">'+fmt(x.scan)+'</td>'+
+        '<td class="n">'+(x.add?'<b>'+sg(x.add)+'</b>':'<span class="muted">·</span>')+'</td>'+
+        '<td class="n d '+(x.diff>0?'plus':'minus')+'">'+sg(x.diff)+'</td></tr>';
+    }).join('');
   }
 
-  $('dl').addEventListener('click',function(){
-    if(!res) return;
-    var btn = this; btn.disabled = true; $('dlmsg').textContent = '만드는 중…';
-    L.buildWorkbook(ExcelJS,res).xlsx.writeBuffer().then(function(buf){
-      var s = res.stats;
-      var name = '인수인계재고조사확인서_'+(s.store||'').replace(/\s+/g,'')+'_'+(s.surveyDate||'').replace(/-/g,'')+'.xlsx';
+  function download(m){
+    var r = res[m]; if(!r) return;
+    var btn = $('dl'+m); btn.disabled = true; $('dlmsg'+m).textContent = '만드는 중…';
+    var wb = m===1 ? L.buildPrecheckWorkbook(ExcelJS, r) : L.buildFinalWorkbook(ExcelJS, r);
+    wb.xlsx.writeBuffer().then(function(buf){
+      var s = r.stats, base = m===1 ? '본사전송전재고차이추적_' : '재고실사내역조회붙여넣기_';
+      var name = base+(s.store||'').replace(/\s+/g,'')+'_'+(s.surveyDate||'').replace(/-/g,'')+'.xlsx';
       var url = URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
       var a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
-      $('dlmsg').textContent = name+' 저장됨';
-    }).catch(function(e){ $('dlmsg').textContent = '생성 실패: '+e.message; })
-      .then(function(){ btn.disabled = false; });
-  });
-  chips();
+      $('dlmsg'+m).textContent = name+' 저장됨';
+    }).catch(function(e){ $('dlmsg'+m).textContent = '실패: '+e.message; }).then(function(){ btn.disabled = false; });
+  }
+  $('dl1').onclick = function(){ download(1); }; $('dl2').onclick = function(){ download(2); };
+  chips(1); chips(2);
 })();
 </script>
 </body>
